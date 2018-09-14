@@ -16,6 +16,7 @@ import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 
 import lombok.Getter;
+import pl.shockah.iguana.old.IrcListener;
 
 public class IguanaSession {
 	@Nonnull
@@ -50,15 +51,30 @@ public class IguanaSession {
 		}
 
 		for (Configuration.IRC.Server ircServer : configuration.irc.getServers()) {
-			org.pircbotx.Configuration ircConfiguration = new org.pircbotx.Configuration.Builder()
+			ThreadedListenerManager listenerManager = new ThreadedListenerManager();
+			listenerManager.addListener(new IrcListener(IguanaSession.this, ircServer));
+
+			org.pircbotx.Configuration.Builder ircConfigBuilder = new org.pircbotx.Configuration.Builder()
 					.addServer(ircServer.getHost(), ircServer.getPort())
 					.setName(ircServer.getNickname())
 					.setAutoNickChange(true)
-					.setListenerManager(new ThreadedListenerManager() {{
-						addListener(new IrcListener(IguanaSession.this));
-					}})
-					.buildConfiguration();
-			PircBotX ircBot = new PircBotX(ircConfiguration);
+					.setAutoReconnect(true)
+					.setListenerManager(listenerManager);
+
+			for (Configuration.IRC.Server.Channel ircChannel : ircServer.getChannels()) {
+				if (ircChannel.getPassword() == null)
+					ircConfigBuilder.addAutoJoinChannel(ircChannel.getName());
+				else
+					ircConfigBuilder.addAutoJoinChannel(ircChannel.getName(), ircChannel.getPassword());
+			}
+
+			if (ircServer.getNickServLogin() != null) {
+				ircConfigBuilder.setNickservNick(ircServer.getNickServLogin());
+				ircConfigBuilder.setNickservPassword(ircServer.getNickServPassword());
+				ircConfigBuilder.setNickservDelayJoin(true);
+			}
+
+			PircBotX ircBot = new PircBotX(ircConfigBuilder.buildConfiguration());
 			modifiableIrcMap.put(ircServer, ircBot);
 			modifiableReverseIrcMap.put(ircBot, ircServer);
 		}

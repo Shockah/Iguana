@@ -28,7 +28,10 @@ public final class Configuration {
 					jServer.onString("host", server::setHost);
 					jServer.onInt("port", server::setPort);
 					jServer.onString("nickname", server::setNickname);
-					jServer.onLong("discordCategoryChannelId", server::setDiscordChannelCategoryId);
+					jServer.onLong("discordChannelCategoryId", server::setDiscordChannelCategoryId);
+					jServer.onLong("discordManagementChannelId", server::setDiscordManagementChannelId);
+					jServer.onString("nickServLogin", server::setNickServLogin);
+					jServer.onString("nickServPassword", server::setNickServPassword);
 					jServer.onList("channels", jChannels -> {
 						for (JSONObject jChannel : jChannels.ofObjects()) {
 							IRC.Server.Channel channel = new IRC.Server.Channel();
@@ -60,8 +63,15 @@ public final class Configuration {
 	@Getter
 	@Setter
 	public static final class IRC {
+		private long discordManagementChannelId;
+
 		@Nonnull
 		private final List<Server> servers = new ArrayList<>();
+
+		@Nonnull
+		public TextChannel getDiscordManagementChannel(@Nonnull JDA jda) {
+			return jda.getTextChannelById(discordManagementChannelId);
+		}
 
 		@Getter
 		@Setter
@@ -74,6 +84,12 @@ public final class Configuration {
 
 			private long discordChannelCategoryId;
 
+			private long discordManagementChannelId;
+
+			private String nickServLogin;
+
+			private String nickServPassword;
+
 			@Nonnull
 			private final List<Channel> channels = new ArrayList<>();
 
@@ -82,10 +98,17 @@ public final class Configuration {
 				return jda.getCategoryById(discordChannelCategoryId);
 			}
 
+			@Nonnull
+			public TextChannel getDiscordManagementChannel(@Nonnull JDA jda) {
+				return jda.getTextChannelById(discordManagementChannelId);
+			}
+
 			@Getter
 			@Setter
 			public static final class Channel {
 				private String name;
+
+				private String password;
 
 				private long discordChannelId;
 
