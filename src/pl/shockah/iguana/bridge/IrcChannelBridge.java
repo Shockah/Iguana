@@ -1,9 +1,12 @@
 package pl.shockah.iguana.bridge;
 
 import net.dv8tion.jda.core.entities.TextChannel;
+import net.dv8tion.jda.webhook.WebhookMessageBuilder;
 
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
+import org.pircbotx.User;
+import org.pircbotx.hooks.events.MessageEvent;
 
 import javax.annotation.Nonnull;
 
@@ -46,5 +49,22 @@ public class IrcChannelBridge {
 		ircBot = serverBridge.getIrcBot();
 		this.serverBridge = serverBridge;
 		this.ircChannelConfig = ircChannelConfig;
+	}
+
+	public void onMessage(@Nonnull MessageEvent event) {
+		Channel channel = event.getChannel();
+		if (channel == null)
+			return;
+
+		User user = event.getUser();
+		if (user == null)
+			return;
+
+		getWebhookClient().send(
+				new WebhookMessageBuilder()
+						.setUsername(user.getNick())
+						.setContent(event.getMessage())
+						.build()
+		);
 	}
 }

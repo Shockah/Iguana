@@ -3,20 +3,15 @@ package pl.shockah.iguana;
 import net.dv8tion.jda.core.AccountType;
 import net.dv8tion.jda.core.JDA;
 import net.dv8tion.jda.core.JDABuilder;
-
-import org.pircbotx.PircBotX;
-import org.pircbotx.hooks.managers.ThreadedListenerManager;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import net.dv8tion.jda.core.events.ReadyEvent;
+import net.dv8tion.jda.core.hooks.ListenerAdapter;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 
 import lombok.Getter;
-import pl.shockah.iguana.old.IrcListener;
+import pl.shockah.iguana.bridge.IrcBridge;
+import pl.shockah.iguana.bridge.IrcServerBridge;
 
 public class IguanaSession {
 	@Nonnull
@@ -28,64 +23,48 @@ public class IguanaSession {
 	private final JDA discord;
 
 	@Nonnull
-	private final Map<Configuration.IRC.Server, PircBotX> modifiableIrcMap = new HashMap<>();
-
-	@Nonnull
 	@Getter
-	private final Map<Configuration.IRC.Server, PircBotX> ircMap = Collections.unmodifiableMap(modifiableIrcMap);
+	private final IrcBridge bridge;
 
-	@Nonnull
-	private final Map<PircBotX, Configuration.IRC.Server> modifiableReverseIrcMap = new LinkedHashMap<>();
-
-	@Nonnull
-	@Getter
-	private final Map<PircBotX, Configuration.IRC.Server> reverseIrcMap = Collections.unmodifiableMap(modifiableReverseIrcMap);
-
-	public IguanaSession(@Nonnull Configuration configuration) throws SessionException {
+	public IguanaSession(@Nonnull Configuration configuration) throws Exception {
 		this.configuration = configuration;
 
 		try {
-			discord = new JDABuilder(AccountType.BOT).setToken(configuration.discord.getToken()).build();
+			discord = new JDABuilder(AccountType.BOT).addEventListener(new ListenerAdapter() {
+				@Override
+				public void onReady(ReadyEvent event) {
+					super.onReady(event);
+
+					for (Configuration.IRC.Server ircServerConfig : configuration.irc.getServers()) {
+						IrcServerBridge serverBridge = new IrcServerBridge(IguanaSession.this, ircServerConfig);
+						serverBridge.start();
+						bridge.getServers().put(ircServerConfig, serverBridge);
+					}
+
+					new Thread(() -> {
+						bridge.prepareIrcTask().run();
+
+						bridge.getServers().readOperation(servers -> {
+							for (Configuration.IRC.Server ircServerConfig : servers.keySet()) {
+								bridge.prepareIrcServerTask(ircServerConfig).run();
+							}
+						});
+					}).start();
+				}
+			}).setToken(configuration.discord.getToken()).build();
 		} catch (LoginException e) {
-			throw new SessionException(e);
+			throw new Exception(e);
 		}
 
-		for (Configuration.IRC.Server ircServer : configuration.irc.getServers()) {
-			ThreadedListenerManager listenerManager = new ThreadedListenerManager();
-			listenerManager.addListener(new IrcListener(IguanaSession.this, ircServer));
-
-			org.pircbotx.Configuration.Builder ircConfigBuilder = new org.pircbotx.Configuration.Builder()
-					.addServer(ircServer.getHost(), ircServer.getPort())
-					.setName(ircServer.getNickname())
-					.setAutoNickChange(true)
-					.setAutoReconnect(true)
-					.setListenerManager(listenerManager);
-
-			for (Configuration.IRC.Server.Channel ircChannel : ircServer.getChannels()) {
-				if (ircChannel.getPassword() == null)
-					ircConfigBuilder.addAutoJoinChannel(ircChannel.getName());
-				else
-					ircConfigBuilder.addAutoJoinChannel(ircChannel.getName(), ircChannel.getPassword());
-			}
-
-			if (ircServer.getNickServLogin() != null) {
-				ircConfigBuilder.setNickservNick(ircServer.getNickServLogin());
-				ircConfigBuilder.setNickservPassword(ircServer.getNickServPassword());
-				ircConfigBuilder.setNickservDelayJoin(true);
-			}
-
-			PircBotX ircBot = new PircBotX(ircConfigBuilder.buildConfiguration());
-			modifiableIrcMap.put(ircServer, ircBot);
-			modifiableReverseIrcMap.put(ircBot, ircServer);
-		}
+		bridge = new IrcBridge(this);
 	}
 
-	public static class SessionException extends Exception {
-		public SessionException() {
+	public static class Exception extends java.lang.Exception {
+		public Exception() {
 			super();
 		}
 
-		public SessionException(@Nonnull Throwable throwable) {
+		public Exception(@Nonnull Throwable throwable) {
 			super(throwable);
 		}
 	}

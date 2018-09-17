@@ -76,7 +76,7 @@ task run(dependsOn: project.tasks.classes, type: JavaExec) {
 	main = project.mainClassName
 	classpath = sourceSets.main.runtimeClasspath
 	standardInput = System.in
-	workingDir = project.assetsDir
+	workingDir = project.projectDir
 	ignoreExitValue = true
 
 	if (System.getProperty('DEBUG', 'false') == 'true') {
