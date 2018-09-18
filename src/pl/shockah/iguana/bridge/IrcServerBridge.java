@@ -7,8 +7,13 @@ import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.exception.IrcException;
 import org.pircbotx.hooks.ListenerAdapter;
+import org.pircbotx.hooks.events.JoinEvent;
 import org.pircbotx.hooks.events.MessageEvent;
+import org.pircbotx.hooks.events.NickChangeEvent;
+import org.pircbotx.hooks.events.PartEvent;
+import org.pircbotx.hooks.events.QuitEvent;
 import org.pircbotx.hooks.managers.ThreadedListenerManager;
+import org.pircbotx.snapshot.UserChannelDaoSnapshot;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -131,6 +136,57 @@ public class IrcServerBridge {
 				return;
 
 			getChannelBridge(channel).onMessage(event);
+		}
+
+		@Override
+		public void onJoin(JoinEvent event) throws Exception {
+			super.onJoin(event);
+
+			if (event.getBot().getUserBot().equals(event.getUser()))
+				return;
+
+			getChannelBridge(event.getChannel()).onJoin(event);
+		}
+
+		@Override
+		public void onPart(PartEvent event) throws Exception {
+			super.onPart(event);
+
+			if (event.getBot().getUserBot().equals(event.getUser()))
+				return;
+
+			getChannelBridge(event.getChannel()).onPart(event);
+		}
+
+		@Override
+		public void onQuit(QuitEvent event) throws Exception {
+			super.onQuit(event);
+
+			if (event.getBot().getUserBot().equals(event.getUser()))
+				return;
+
+			UserChannelDaoSnapshot dao = event.getUserChannelDaoSnapshot();
+			if (dao == null)
+				return;
+
+			channels.iterateValues(bridge -> {
+				Channel snapshotChannel = dao.getChannel(bridge.getIrcChannel().getName());
+				if (snapshotChannel.getUsers().contains(event.getUser()))
+					bridge.onQuit(event);
+			});
+		}
+
+		@Override
+		public void onNickChange(NickChangeEvent event) throws Exception {
+			super.onNickChange(event);
+
+			if (event.getBot().getUserBot().equals(event.getUser()))
+				return;
+
+			channels.iterateValues(bridge -> {
+				if (bridge.getIrcChannel().getUsers().contains(event.getUser()))
+					bridge.onNickChange(event);
+			});
 		}
 	}
 }

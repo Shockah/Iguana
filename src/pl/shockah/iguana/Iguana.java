@@ -10,6 +10,7 @@ import javax.annotation.Nonnull;
 import lombok.Getter;
 import pl.shockah.jay.JSONObject;
 import pl.shockah.jay.JSONParser;
+import pl.shockah.jay.JSONPrettyPrinter;
 
 public class Iguana {
 	@Nonnull
@@ -20,16 +21,23 @@ public class Iguana {
 
 	public static void main(String[] args) {
 		try {
-			JSONObject configJson = new JSONParser().parseObject(new String(Files.readAllBytes(configFile.toPath()), Charset.forName("UTF-8")));
-			Configuration config = Configuration.read(configJson);
-			new Iguana().start(config);
-			//new Iguana().start();
+			Iguana app = new Iguana();
+			app.start(Configuration.read(app.loadConfigJson()));
 		} catch (IOException | IguanaSession.Exception e) {
 			e.printStackTrace();
 		}
 	}
 
 	public void start(@Nonnull Configuration config) throws IguanaSession.Exception {
-		session = new IguanaSession(config);
+		session = new IguanaSession(this, config);
+	}
+
+	@Nonnull
+	public JSONObject loadConfigJson() throws IOException {
+		return new JSONParser().parseObject(new String(Files.readAllBytes(configFile.toPath()), Charset.forName("UTF-8")));
+	}
+
+	public void saveConfigJson(@Nonnull JSONObject configJson) throws IOException {
+		Files.write(configFile.toPath(), new JSONPrettyPrinter().toString(configJson).getBytes(Charset.forName("UTF-8")));
 	}
 }

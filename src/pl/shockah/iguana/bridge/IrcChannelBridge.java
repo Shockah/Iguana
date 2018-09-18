@@ -1,21 +1,40 @@
 package pl.shockah.iguana.bridge;
 
+import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.webhook.WebhookMessageBuilder;
 
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
+import org.pircbotx.hooks.events.JoinEvent;
 import org.pircbotx.hooks.events.MessageEvent;
+import org.pircbotx.hooks.events.NickChangeEvent;
+import org.pircbotx.hooks.events.PartEvent;
+import org.pircbotx.hooks.events.QuitEvent;
+
+import java.awt.Color;
+import java.time.Instant;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import lombok.Getter;
 import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.IguanaSession;
 import pl.shockah.iguana.WebhookClientWrapper;
+import pl.shockah.unicorn.color.LCHColorSpace;
 
 public class IrcChannelBridge {
+	@Nonnull
+	private static final String ALLOWED_NONALPHANUMERIC_NICKNAME_CHARACTERS = "[\\]^_-{|}";
+
+	@Nonnull
+	private static final float[] NICKNAME_LENGTH_LIGHTNESS = new float[] { 0.55f, 0.65f, 0.75f, 0.85f };
+
+	@Nonnull
+	private static final float[] NICKNAME_LENGTH_CHROMA = new float[] { 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
+
 	@Nonnull
 	@Getter
 	private final IguanaSession session;
@@ -51,6 +70,54 @@ public class IrcChannelBridge {
 		this.ircChannelConfig = ircChannelConfig;
 	}
 
+	private float getAtReversingRepeatingIndex(@Nonnull float[] array, int index) {
+		int maxIndex = array.length * 2 - 2;
+		int semiIndex = index % maxIndex;
+		if (semiIndex < array.length)
+			return array[semiIndex];
+		else
+			return array[maxIndex - semiIndex];
+	}
+
+	@Nonnull
+	private LCHColorSpace getLchBackgroundColorForNickname(@Nonnull String nickname) {
+		StringBuilder sb = new StringBuilder(nickname.toLowerCase());
+		for (int i = 0; i < sb.length(); i++) {
+			if (ALLOWED_NONALPHANUMERIC_NICKNAME_CHARACTERS.indexOf(sb.charAt(i)) != -1)
+				sb.deleteCharAt(i--);
+		}
+		for (int i = sb.length() - 1; i >= 0; i++) {
+			char c = sb.charAt(i);
+			if (c >= '0' && c <= '9')
+				sb.deleteCharAt(i);
+			else
+				break;
+		}
+
+		return new LCHColorSpace(
+				getAtReversingRepeatingIndex(NICKNAME_LENGTH_LIGHTNESS, nickname.length() - 1) * 100f,
+				getAtReversingRepeatingIndex(NICKNAME_LENGTH_CHROMA, nickname.length() - 1) * 133f,
+				(sb.toString().hashCode() % 100) / 100f
+		);
+	}
+
+	@Nonnull
+	private LCHColorSpace getLchTextColorForBackgroundColor(@Nonnull LCHColorSpace backgroundColor) {
+		LCHColorSpace result = new LCHColorSpace(backgroundColor.l, backgroundColor.c, backgroundColor.h);
+		if (backgroundColor.l < 50f)
+			result.l += 40f;
+		else
+			result.l -= 40f;
+		return result;
+	}
+
+	@Nullable
+	public String getAvatarUrl(@Nonnull String nickname) {
+		LCHColorSpace lchBackgroundColor = getLchBackgroundColorForNickname(nickname);
+		LCHColorSpace lchTextColor = getLchTextColorForBackgroundColor(lchBackgroundColor);
+		return session.getConfiguration().discord.getAvatarUrl(nickname, lchBackgroundColor.toRGB(), lchTextColor.toRGB());
+	}
+
 	public void onMessage(@Nonnull MessageEvent event) {
 		Channel channel = event.getChannel();
 		if (channel == null)
@@ -63,8 +130,65 @@ public class IrcChannelBridge {
 		getWebhookClient().send(
 				new WebhookMessageBuilder()
 						.setUsername(user.getNick())
+						.setAvatarUrl(getAvatarUrl(user.getNick()))
 						.setContent(event.getMessage())
 						.build()
 		);
+	}
+
+	public void onJoin(@Nonnull JoinEvent event) {
+		User user = event.getUser();
+		if (user == null)
+			return;
+
+		getDiscordChannel().sendMessage(
+				new EmbedBuilder()
+						.setColor(new Color(30, 200, 30))
+						.setDescription(String.format("**%s** (`%s!%s@%s`) joined.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
+						.setTimestamp(Instant.now())
+						.build()
+		).queue();
+	}
+
+	public void onPart(@Nonnull PartEvent event) {
+		User user = event.getUser();
+		if (user == null)
+			return;
+
+		getDiscordChannel().sendMessage(
+				new EmbedBuilder()
+						.setColor(new Color(200, 30, 30))
+						.setDescription(String.format("**%s** (`%s!%s@%s`) left.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
+						.setTimestamp(Instant.now())
+						.build()
+		).queue();
+	}
+
+	public void onQuit(@Nonnull QuitEvent event) {
+		User user = event.getUser();
+		if (user == null)
+			return;
+
+		getDiscordChannel().sendMessage(
+				new EmbedBuilder()
+						.setColor(new Color(200, 30, 30))
+						.setDescription(String.format("**%s** (`%s!%s@%s`) has quit.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
+						.setTimestamp(Instant.now())
+						.build()
+		).queue();
+	}
+
+	public void onNickChange(@Nonnull NickChangeEvent event) {
+		User user = event.getUser();
+		if (user == null)
+			return;
+
+		getDiscordChannel().sendMessage(
+				new EmbedBuilder()
+						.setColor(new Color(127, 127, 127))
+						.setDescription(String.format("**%s** (`%s!%s@%s`) is now known as **%s**.", event.getOldNick(), user.getNick(), user.getLogin(), user.getHostname(), event.getNewNick()))
+						.setTimestamp(Instant.now())
+						.build()
+		).queue();
 	}
 }

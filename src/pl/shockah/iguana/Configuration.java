@@ -5,14 +5,21 @@ import net.dv8tion.jda.core.entities.Category;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.Webhook;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import lombok.Getter;
 import lombok.Setter;
+import pl.shockah.jay.JSONList;
 import pl.shockah.jay.JSONObject;
+import pl.shockah.unicorn.UnexpectedException;
+import pl.shockah.unicorn.color.RGBColorSpace;
 
 public final class Configuration {
 	@Nonnull
@@ -20,8 +27,10 @@ public final class Configuration {
 		Configuration config = new Configuration();
 		json.onObject("discord", jDiscord -> {
 			jDiscord.onString("token", config.discord::setToken);
+			jDiscord.onString("avatarUrlFormat", config.discord::setAvatarUrlFormat);
 		});
 		json.onObject("irc", jIrc -> {
+			jIrc.onLong("discordManagementChannelId", config.irc::setDiscordManagementChannelId);
 			jIrc.onList("servers", jServers -> {
 				for (JSONObject jServer : jServers.ofObjects()) {
 					IRC.Server server = new IRC.Server();
@@ -49,12 +58,65 @@ public final class Configuration {
 	}
 
 	@Nonnull
+	public JSONObject write() {
+		return JSONObject.of(
+				"discord", JSONObject.of(
+						"token", discord.token,
+						"avatarUrlFormat", discord.avatarUrlFormat
+				),
+				"irc", JSONObject.of(
+						"discordManagementChannelId", irc.discordManagementChannelId,
+						"servers", new JSONList<>(
+								irc.servers.stream()
+										.map(ircServerConfig -> JSONObject.of(
+												"host", ircServerConfig.host,
+												"port", ircServerConfig.port,
+												"nickname", ircServerConfig.nickname,
+												"discordChannelCategoryId", ircServerConfig.discordChannelCategoryId,
+												"discordManagementChannelId", ircServerConfig.discordManagementChannelId,
+												"nickServLogin", ircServerConfig.nickServLogin,
+												"nickServPassword", ircServerConfig.nickServPassword,
+												"channels", new JSONList<JSONObject>(
+														ircServerConfig.channels.stream()
+																.map(ircChannelConfig -> JSONObject.of(
+																		"name", ircChannelConfig.name,
+																		"discordChannelId", ircChannelConfig.discordChannelId,
+																		"webhookId", ircChannelConfig.webhookId
+																))
+																.collect(Collectors.toList())
+												)
+										))
+										.collect(Collectors.toList())
+						)
+				)
+		);
+	}
+
+	@Nonnull
 	public final Discord discord = new Discord();
 
 	@Getter
 	@Setter
 	public static final class Discord {
 		private String token;
+
+		private String avatarUrlFormat;
+
+		@Nullable
+		public String getAvatarUrl(@Nonnull String nickname, @Nonnull RGBColorSpace backgroundColor, @Nonnull RGBColorSpace textColor) {
+			if (avatarUrlFormat == null)
+				return null;
+
+			try {
+				String url = avatarUrlFormat;
+				url = url.replace("%nick%", URLEncoder.encode(nickname, "UTF-8"));
+				url = url.replace("%backgroundRgb%", String.format("%02x%02x%02x", (int)(backgroundColor.r * 255), (int)(backgroundColor.g * 255), (int)(backgroundColor.b * 255)));
+				url = url.replace("%textRgb%", String.format("%02x%02x%02x", (int)(textColor.r * 255), (int)(textColor.g * 255), (int)(textColor.b * 255)));
+				return url;
+			} catch (UnsupportedEncodingException e) {
+				throw new UnexpectedException(e);
+			}
+		}
 	}
 
 	@Nonnull

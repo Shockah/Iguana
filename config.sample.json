@@ -1,5 +1,19 @@
 {
 	"discord": {
-		"token": "xXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxX"
+		"token": "xXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxX",
+		"avatarUrlFormat": "http://example.com/avatar-r%r%-g%g%-b%b%.png"
+	},
+	"irc": {
+		"servers": [
+			{
+				"host": "irc.example.com",
+				"nickname": "MyName",
+				"channels": [
+					{
+						"name": "#example"
+					}
+				]
+			}
+		]
 	}
 }

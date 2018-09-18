@@ -6,6 +6,8 @@ import net.dv8tion.jda.core.JDABuilder;
 import net.dv8tion.jda.core.events.ReadyEvent;
 import net.dv8tion.jda.core.hooks.ListenerAdapter;
 
+import java.io.IOException;
+
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 
@@ -14,6 +16,10 @@ import pl.shockah.iguana.bridge.IrcBridge;
 import pl.shockah.iguana.bridge.IrcServerBridge;
 
 public class IguanaSession {
+	@Nonnull
+	@Getter
+	private final Iguana app;
+
 	@Nonnull
 	@Getter
 	private final Configuration configuration;
@@ -26,7 +32,8 @@ public class IguanaSession {
 	@Getter
 	private final IrcBridge bridge;
 
-	public IguanaSession(@Nonnull Configuration configuration) throws Exception {
+	public IguanaSession(@Nonnull Iguana app, @Nonnull Configuration configuration) throws Exception {
+		this.app = app;
 		this.configuration = configuration;
 
 		try {
@@ -49,6 +56,12 @@ public class IguanaSession {
 								bridge.prepareIrcServerTask(ircServerConfig).run();
 							}
 						});
+
+						try {
+							app.saveConfigJson(configuration.write());
+						} catch (IOException e) {
+							throw new RuntimeException(e);
+						}
 					}).start();
 				}
 			}).setToken(configuration.discord.getToken()).build();

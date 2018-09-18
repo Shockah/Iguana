@@ -6,3 +6,5 @@ local.properties
 *.iml
 .idea/
 config.json
+php-hosting/vendor
+php-hosting/composer.lock
