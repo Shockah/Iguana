@@ -88,6 +88,11 @@ public class IrcBridge {
 				discordChannel = ircChannelConfig.getDiscordChannel(session.getDiscord());
 			}
 
+			if (ircChannelConfig.getDiscordEventChannelId() == 0) {
+				TextChannel discordEventChannel = (TextChannel)discordCategory.createTextChannel(String.format("%s-events", ircChannelConfig.getName())).complete();
+				ircChannelConfig.setDiscordEventChannelId(discordEventChannel.getIdLong());
+			}
+
 			if (ircChannelConfig.getWebhookId() == 0) {
 				String webhookName = String.format("%s-%s", ircServerConfig.getHost(), ircChannelConfig.getName());
 				if (webhookName.length() > 32)

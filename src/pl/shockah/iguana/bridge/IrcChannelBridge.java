@@ -57,6 +57,10 @@ public class IrcChannelBridge {
 
 	@Nonnull
 	@Getter(lazy = true)
+	private final TextChannel discordEventChannel = ircChannelConfig.getDiscordEventChannel(session.getDiscord());
+
+	@Nonnull
+	@Getter(lazy = true)
 	private final Channel ircChannel = ircBot.getUserChannelDao().getChannel(ircChannelConfig.getName());
 
 	@Nonnull
@@ -141,7 +145,7 @@ public class IrcChannelBridge {
 		if (user == null)
 			return;
 
-		getDiscordChannel().sendMessage(
+		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
 						.setColor(new Color(30, 200, 30))
 						.setDescription(String.format("**%s** (`%s!%s@%s`) joined.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
@@ -155,7 +159,7 @@ public class IrcChannelBridge {
 		if (user == null)
 			return;
 
-		getDiscordChannel().sendMessage(
+		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
 						.setColor(new Color(200, 30, 30))
 						.setDescription(String.format("**%s** (`%s!%s@%s`) left.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
@@ -169,7 +173,7 @@ public class IrcChannelBridge {
 		if (user == null)
 			return;
 
-		getDiscordChannel().sendMessage(
+		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
 						.setColor(new Color(200, 30, 30))
 						.setDescription(String.format("**%s** (`%s!%s@%s`) has quit.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
@@ -183,7 +187,7 @@ public class IrcChannelBridge {
 		if (user == null)
 			return;
 
-		getDiscordChannel().sendMessage(
+		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
 						.setColor(new Color(127, 127, 127))
 						.setDescription(String.format("**%s** (`%s!%s@%s`) is now known as **%s**.", event.getOldNick(), user.getNick(), user.getLogin(), user.getHostname(), event.getNewNick()))

@@ -46,6 +46,7 @@ public final class Configuration {
 							IRC.Server.Channel channel = new IRC.Server.Channel();
 							jChannel.onString("name", channel::setName);
 							jChannel.onLong("discordChannelId", channel::setDiscordChannelId);
+							jChannel.onLong("discordEventChannelId", channel::setDiscordEventChannelId);
 							jChannel.onLong("webhookId", channel::setWebhookId);
 							server.channels.add(channel);
 						}
@@ -81,6 +82,7 @@ public final class Configuration {
 																.map(ircChannelConfig -> JSONObject.of(
 																		"name", ircChannelConfig.name,
 																		"discordChannelId", ircChannelConfig.discordChannelId,
+																		"discordEventChannelId", ircChannelConfig.discordEventChannelId,
 																		"webhookId", ircChannelConfig.webhookId
 																))
 																.collect(Collectors.toList())
@@ -174,11 +176,18 @@ public final class Configuration {
 
 				private long discordChannelId;
 
+				private long discordEventChannelId;
+
 				private long webhookId;
 
 				@Nonnull
 				public TextChannel getDiscordChannel(@Nonnull JDA jda) {
 					return jda.getTextChannelById(discordChannelId);
+				}
+
+				@Nonnull
+				public TextChannel getDiscordEventChannel(@Nonnull JDA jda) {
+					return jda.getTextChannelById(discordEventChannelId);
 				}
 
 				@Nonnull
