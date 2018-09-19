@@ -3,6 +3,7 @@ package pl.shockah.iguana.bridge;
 import net.dv8tion.jda.core.entities.Category;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.TextChannel;
+import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.entities.Webhook;
 
 import java.util.HashMap;
@@ -34,7 +35,18 @@ public class IrcBridge {
 	@Nonnull
 	public Runnable prepareIrcTask() {
 		return () -> {
-			Guild guild = session.getDiscord().getGuilds().stream().findFirst().orElseThrow(IllegalStateException::new);
+			Guild guild;
+			if (session.getConfiguration().discord.getGuildId() == 0) {
+				guild = session.getDiscord().getGuilds().stream().findFirst().orElseThrow(IllegalStateException::new);
+				session.getConfiguration().discord.setGuildId(guild.getIdLong());
+			} else {
+				guild = session.getConfiguration().discord.getGuild(session.getDiscord());
+			}
+
+			if (session.getConfiguration().discord.getOwnerUserId() == 0) {
+				User ownerUser = guild.getOwner().getUser();
+				session.getConfiguration().discord.setOwnerUserId(ownerUser.getIdLong());
+			}
 
 			if (session.getConfiguration().irc.getDiscordManagementChannelId() == 0) {
 				TextChannel discordManagementChannel = (TextChannel)guild.getController().createTextChannel("iguana").complete();
@@ -46,7 +58,7 @@ public class IrcBridge {
 	@Nonnull
 	public Runnable prepareIrcServerTask(@Nonnull Configuration.IRC.Server ircServerConfig) {
 		return () -> {
-			Guild guild = session.getDiscord().getGuilds().stream().findFirst().orElseThrow(IllegalStateException::new);
+			Guild guild = session.getConfiguration().discord.getGuild(session.getDiscord());
 
 			Category discordCategory;
 			if (ircServerConfig.getDiscordChannelCategoryId() == 0) {
@@ -70,7 +82,7 @@ public class IrcBridge {
 	@Nonnull
 	public Runnable prepareIrcChannelTask(@Nonnull Configuration.IRC.Server ircServerConfig, @Nonnull Configuration.IRC.Server.Channel ircChannelConfig) {
 		return () -> {
-			Guild guild = session.getDiscord().getGuilds().stream().findFirst().orElseThrow(IllegalStateException::new);
+			Guild guild = session.getConfiguration().discord.getGuild(session.getDiscord());
 
 			Category discordCategory;
 			if (ircServerConfig.getDiscordChannelCategoryId() == 0) {

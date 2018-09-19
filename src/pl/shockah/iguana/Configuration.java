@@ -2,7 +2,9 @@ package pl.shockah.iguana;
 
 import net.dv8tion.jda.core.JDA;
 import net.dv8tion.jda.core.entities.Category;
+import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.TextChannel;
+import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.entities.Webhook;
 
 import java.io.UnsupportedEncodingException;
@@ -28,6 +30,8 @@ public final class Configuration {
 		json.onObject("discord", jDiscord -> {
 			jDiscord.onString("token", config.discord::setToken);
 			jDiscord.onString("avatarUrlFormat", config.discord::setAvatarUrlFormat);
+			jDiscord.onLong("guildId", config.discord::setGuildId);
+			jDiscord.onLong("ownerUserId", config.discord::setOwnerUserId);
 		});
 		json.onObject("irc", jIrc -> {
 			jIrc.onLong("discordManagementChannelId", config.irc::setDiscordManagementChannelId);
@@ -63,7 +67,9 @@ public final class Configuration {
 		return JSONObject.of(
 				"discord", JSONObject.of(
 						"token", discord.token,
-						"avatarUrlFormat", discord.avatarUrlFormat
+						"avatarUrlFormat", discord.avatarUrlFormat,
+						"guildId", discord.guildId,
+						"ownerUserId", discord.ownerUserId
 				),
 				"irc", JSONObject.of(
 						"discordManagementChannelId", irc.discordManagementChannelId,
@@ -104,6 +110,10 @@ public final class Configuration {
 
 		private String avatarUrlFormat;
 
+		private long guildId;
+
+		private long ownerUserId;
+
 		@Nullable
 		public String getAvatarUrl(@Nonnull String nickname, @Nonnull RGBColorSpace backgroundColor, @Nonnull RGBColorSpace textColor) {
 			if (avatarUrlFormat == null)
@@ -118,6 +128,16 @@ public final class Configuration {
 			} catch (UnsupportedEncodingException e) {
 				throw new UnexpectedException(e);
 			}
+		}
+
+		@Nonnull
+		public Guild getGuild(@Nonnull JDA jda) {
+			return jda.getGuildById(guildId);
+		}
+
+		@Nonnull
+		public User getOwnerUser(@Nonnull JDA jda) {
+			return jda.getUserById(ownerUserId);
 		}
 	}
 

@@ -134,6 +134,12 @@ public class IrcChannelBridge {
 		return nickname;
 	}
 
+	@Nonnull
+	private String formatIrcToDiscordMessage(@Nonnull String ircMessage) {
+		ircMessage = ircMessage.replace(ircBot.getUserBot().getNick(), session.getConfiguration().discord.getOwnerUser(session.getDiscord()).getAsMention());
+		return ircMessage;
+	}
+
 	public void onMessage(@Nonnull MessageEvent event) {
 		Channel channel = event.getChannel();
 		if (channel == null)
@@ -147,7 +153,7 @@ public class IrcChannelBridge {
 				new WebhookMessageBuilder()
 						.setUsername(getFullIrcNickname(user))
 						.setAvatarUrl(getAvatarUrl(user.getNick()))
-						.setContent(event.getMessage())
+						.setContent(formatIrcToDiscordMessage(event.getMessage()))
 						.build()
 		);
 	}
