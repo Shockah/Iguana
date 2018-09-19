@@ -122,6 +122,18 @@ public class IrcChannelBridge {
 		return session.getConfiguration().discord.getAvatarUrl(nickname, lchBackgroundColor.toRGB(), lchTextColor.toRGB());
 	}
 
+	@Nonnull
+	private String getFullIrcNickname(@Nonnull User user) {
+		String nickname = user.getNick();
+		if (getIrcChannel().hasVoice(user))
+			nickname = String.format("+%s", nickname);
+		else if (getIrcChannel().isHalfOp(user))
+			nickname = String.format("%%%s", nickname);
+		else if (getIrcChannel().isOp(user))
+			nickname = String.format("@%s", nickname);
+		return nickname;
+	}
+
 	public void onMessage(@Nonnull MessageEvent event) {
 		Channel channel = event.getChannel();
 		if (channel == null)
@@ -133,7 +145,7 @@ public class IrcChannelBridge {
 
 		getWebhookClient().send(
 				new WebhookMessageBuilder()
-						.setUsername(user.getNick())
+						.setUsername(getFullIrcNickname(user))
 						.setAvatarUrl(getAvatarUrl(user.getNick()))
 						.setContent(event.getMessage())
 						.build()
