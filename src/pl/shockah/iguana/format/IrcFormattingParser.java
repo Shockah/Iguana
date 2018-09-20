@@ -7,19 +7,20 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
 
-public class IrcFormattingParser {
+public class IrcFormattingParser implements FormattingParser {
 	@Nonnull
 	private static final Pattern colorPrefixPattern = Pattern.compile(
 			String.format("%s%s", Pattern.quote(IrcFormattingConstants.COLOR_PREFIX), "((\\d\\d?)(?:,(\\d\\d?))?)?")
 	);
 
 	@Nonnull
-	public List<FormattedString> parse(@Nonnull String ircMessage) {
+	@Override
+	public List<FormattedString> parse(@Nonnull String message) {
 		List<FormattedString> result = new ArrayList<>();
 		Processor processor = new Processor(result);
 
-		for (int i = 0; i < ircMessage.length(); ) {
-			int codePoint = ircMessage.codePointAt(i);
+		for (int i = 0; i < message.length(); ) {
+			int codePoint = message.codePointAt(i);
 			processor.process(codePoint);
 			i += Character.charCount(codePoint);
 		}
@@ -73,11 +74,11 @@ public class IrcFormattingParser {
 				return;
 			if (handlePrefix(IrcFormattingConstants.ITALIC, prefix -> italic = !italic))
 				return;
-			if (handlePrefix(IrcFormattingConstants.INVERSE, prefix -> inverse = !inverse))
-				return;
 			if (handlePrefix(IrcFormattingConstants.UNDERLINE, prefix -> underline = !underline))
 				return;
 			if (handlePrefix(IrcFormattingConstants.STRIKETHROUGH, prefix -> strikethrough = !strikethrough))
+				return;
+			if (handlePrefix(IrcFormattingConstants.INVERSE, prefix -> inverse = !inverse))
 				return;
 
 			Matcher colorMatcher = colorPrefixPattern.matcher(sb);
@@ -101,7 +102,7 @@ public class IrcFormattingParser {
 							newBackgroundColor = IrcColor.fromCode(backgroundColorCode);
 
 						String stringToPush = sb.substring(0, colorMatcher.start());
-						result.add(new FormattedString(bold, italic, inverse, strikethrough, textColor, backgroundColor, stringToPush));
+						result.add(new FormattedString(bold, italic, underline, strikethrough, inverse, textColor, backgroundColor, stringToPush));
 						sb.delete(0, stringToPush.length() + colorMatcher.group(0).length());
 
 						if (newTextColor != null)
@@ -127,7 +128,7 @@ public class IrcFormattingParser {
 
 		private void push() {
 			if (sb.length() != 0) {
-				result.add(new FormattedString(bold, italic, inverse, strikethrough, textColor, backgroundColor, sb.toString()));
+				result.add(new FormattedString(bold, italic, underline, strikethrough, inverse, textColor, backgroundColor, sb.toString()));
 				sb = new StringBuilder();
 			}
 		}

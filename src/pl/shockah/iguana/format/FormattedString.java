@@ -7,12 +7,11 @@ public class FormattedString {
 
 	public final boolean italic;
 
-	/**
-	 * Either underline (Discord) or inverse (IRC).
-	 */
-	public final boolean emphasis;
+	public final boolean underline;
 
 	public final boolean strikethrough;
+
+	public final boolean inverse;
 
 	@Nonnull
 	public final IrcColor textColor;
@@ -23,11 +22,16 @@ public class FormattedString {
 	@Nonnull
 	public final String text;
 
-	public FormattedString(boolean bold, boolean italic, boolean emphasis, boolean strikethrough, @Nonnull IrcColor textColor, @Nonnull IrcColor backgroundColor, @Nonnull String text) {
+	public FormattedString(boolean bold, boolean italic, boolean underline, boolean strikethrough, @Nonnull IrcColor textColor, @Nonnull IrcColor backgroundColor, @Nonnull String text) {
+		this(bold, italic, underline, strikethrough, false, textColor, backgroundColor, text);
+	}
+
+	public FormattedString(boolean bold, boolean italic, boolean underline, boolean strikethrough, boolean inverse, @Nonnull IrcColor textColor, @Nonnull IrcColor backgroundColor, @Nonnull String text) {
 		this.bold = bold;
 		this.italic = italic;
-		this.emphasis = emphasis;
+		this.underline = underline;
 		this.strikethrough = strikethrough;
+		this.inverse = inverse;
 		this.textColor = textColor;
 		this.backgroundColor = backgroundColor;
 		this.text = text;
