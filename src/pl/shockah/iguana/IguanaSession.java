@@ -35,6 +35,7 @@ public class IguanaSession {
 	public IguanaSession(@Nonnull Iguana app, @Nonnull Configuration configuration) throws Exception {
 		this.app = app;
 		this.configuration = configuration;
+		bridge = new IrcBridge(this);
 
 		try {
 			discord = new JDABuilder(AccountType.BOT).addEventListener(new ListenerAdapter() {
@@ -68,8 +69,6 @@ public class IguanaSession {
 		} catch (LoginException e) {
 			throw new Exception(e);
 		}
-
-		bridge = new IrcBridge(this);
 	}
 
 	public static class Exception extends java.lang.Exception {
