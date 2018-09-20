@@ -14,15 +14,23 @@ import org.pircbotx.hooks.events.PartEvent;
 import org.pircbotx.hooks.events.QuitEvent;
 
 import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.Instant;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.imageio.ImageIO;
 
+import javafx.embed.swing.SwingFXUtils;
+import javafx.scene.image.Image;
 import lombok.Getter;
 import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.IguanaSession;
 import pl.shockah.iguana.WebhookClientWrapper;
+import pl.shockah.unicorn.UnexpectedException;
+import pl.shockah.unicorn.collection.Either2;
 import pl.shockah.unicorn.color.LCHColorSpace;
 
 public class IrcChannelBridge {
@@ -135,9 +143,9 @@ public class IrcChannelBridge {
 	}
 
 	@Nonnull
-	private String formatIrcToDiscordMessage(@Nonnull String ircMessage) {
+	private Either2<String, Image> getFormattedIrcToDiscordMessage(@Nonnull String ircMessage) {
 		ircMessage = ircMessage.replace(ircBot.getUserBot().getNick(), session.getConfiguration().discord.getOwnerUser(session.getDiscord()).getAsMention());
-		return ircMessage;
+		return Either2.first(ircMessage);
 	}
 
 	public void onMessage(@Nonnull MessageEvent event) {
@@ -149,13 +157,25 @@ public class IrcChannelBridge {
 		if (user == null)
 			return;
 
-		getWebhookClient().send(
-				new WebhookMessageBuilder()
-						.setUsername(getFullIrcNickname(user))
-						.setAvatarUrl(getAvatarUrl(user.getNick()))
-						.setContent(formatIrcToDiscordMessage(event.getMessage()))
-						.build()
+		WebhookMessageBuilder builder = new WebhookMessageBuilder()
+				.setUsername(getFullIrcNickname(user))
+				.setAvatarUrl(getAvatarUrl(user.getNick()));
+
+		getFormattedIrcToDiscordMessage(event.getMessage()).apply(
+				builder::setContent,
+				image -> {
+					try {
+						BufferedImage swingImage = SwingFXUtils.fromFXImage(image, null);
+						ByteArrayOutputStream baos = new ByteArrayOutputStream();
+						ImageIO.write(swingImage, "png", baos);
+						builder.addFile("formatted-irc-message.png", baos.toByteArray());
+					} catch (IOException e) {
+						throw new UnexpectedException(e);
+					}
+				}
 		);
+
+		getWebhookClient().send(builder.build());
 	}
 
 	public void onJoin(@Nonnull JoinEvent event) {
