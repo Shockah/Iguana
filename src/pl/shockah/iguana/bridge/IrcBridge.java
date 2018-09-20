@@ -92,17 +92,17 @@ public class IrcBridge {
 				discordCategory = ircServerConfig.getDiscordChannelCategory(session.getDiscord());
 			}
 
+			if (ircChannelConfig.getDiscordEventChannelId() == 0) {
+				TextChannel discordEventChannel = (TextChannel)discordCategory.createTextChannel(String.format("%s-events", ircChannelConfig.getName())).complete();
+				ircChannelConfig.setDiscordEventChannelId(discordEventChannel.getIdLong());
+			}
+
 			TextChannel discordChannel;
 			if (ircChannelConfig.getDiscordChannelId() == 0) {
 				discordChannel = (TextChannel)discordCategory.createTextChannel(ircChannelConfig.getName()).complete();
 				ircChannelConfig.setDiscordChannelId(discordChannel.getIdLong());
 			} else {
 				discordChannel = ircChannelConfig.getDiscordChannel(session.getDiscord());
-			}
-
-			if (ircChannelConfig.getDiscordEventChannelId() == 0) {
-				TextChannel discordEventChannel = (TextChannel)discordCategory.createTextChannel(String.format("%s-events", ircChannelConfig.getName())).complete();
-				ircChannelConfig.setDiscordEventChannelId(discordEventChannel.getIdLong());
 			}
 
 			if (ircChannelConfig.getWebhookId() == 0) {
