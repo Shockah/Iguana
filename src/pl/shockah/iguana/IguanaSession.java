@@ -65,7 +65,7 @@ public class IguanaSession {
 						}
 					}).start();
 				}
-			}).setToken(configuration.discord.getToken()).build();
+			}).addEventListener(bridge).setToken(configuration.discord.getToken()).build();
 		} catch (LoginException e) {
 			throw new Exception(e);
 		}

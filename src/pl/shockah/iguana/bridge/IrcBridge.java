@@ -5,6 +5,8 @@ import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.entities.Webhook;
+import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.core.hooks.ListenerAdapter;
 
 import java.util.HashMap;
 
@@ -15,7 +17,7 @@ import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.IguanaSession;
 import pl.shockah.util.ReadWriteMap;
 
-public class IrcBridge {
+public class IrcBridge extends ListenerAdapter {
 	@Nonnull
 	@Getter
 	private final IguanaSession session;
@@ -113,5 +115,25 @@ public class IrcBridge {
 				ircChannelConfig.setWebhookId(webhook.getIdLong());
 			}
 		};
+	}
+
+	@Override
+	public void onGuildMessageReceived(GuildMessageReceivedEvent event) {
+		if (event.isWebhookMessage())
+			return;
+
+		User ownerUser = session.getConfiguration().discord.getOwnerUser(session.getDiscord());
+		if (!ownerUser.equals(event.getMember().getUser()))
+			return;
+
+		servers.iterate((ircServerConfig, serverBridge, iterator) -> {
+			serverBridge.getChannels().iterate((ircChannelConfig, channelBridge, iterator2) -> {
+				if (channelBridge.getDiscordChannel().equals(event.getChannel())) {
+					channelBridge.onDiscordMessage(event);
+					iterator.stop();
+					iterator2.stop();
+				}
+			});
+		});
 	}
 }

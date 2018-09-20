@@ -2,6 +2,7 @@ package pl.shockah.iguana.bridge;
 
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.TextChannel;
+import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.webhook.WebhookMessageBuilder;
 
 import org.pircbotx.Channel;
@@ -232,5 +233,9 @@ public class IrcChannelBridge {
 						.setTimestamp(Instant.now())
 						.build()
 		).queue();
+	}
+
+	public void onDiscordMessage(@Nonnull GuildMessageReceivedEvent event) {
+		getIrcChannel().send().message(event.getMessage().getContentDisplay());
 	}
 }
