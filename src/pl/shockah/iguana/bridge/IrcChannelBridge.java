@@ -76,6 +76,15 @@ public class IrcChannelBridge {
 	@Getter(lazy = true)
 	private final WebhookClientWrapper webhookClient = new WebhookClientWrapper(ircChannelConfig.getWebhook(session.getDiscord()).newClient().build());
 
+	@Nonnull
+	public static final Color defaultJoinColor = new Color(30, 200, 30);
+
+	@Nonnull
+	public static final Color defaultLeaveColor = new Color(200, 30, 30);
+
+	@Nonnull
+	public static final Color defaultNickChangeColor = new Color(127, 127, 127);
+
 	public IrcChannelBridge(@Nonnull IrcServerBridge serverBridge, @Nonnull Configuration.IRC.Server.Channel ircChannelConfig) {
 		session = serverBridge.getSession();
 		ircBot = serverBridge.getIrcBot();
@@ -186,7 +195,7 @@ public class IrcChannelBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(new Color(30, 200, 30))
+						.setColor(defaultJoinColor)
 						.setDescription(String.format("**%s** (`%s!%s@%s`) joined.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
 						.setTimestamp(Instant.now())
 						.build()
@@ -200,7 +209,7 @@ public class IrcChannelBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(new Color(200, 30, 30))
+						.setColor(defaultLeaveColor)
 						.setDescription(String.format("**%s** (`%s!%s@%s`) left.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
 						.setTimestamp(Instant.now())
 						.build()
@@ -214,7 +223,7 @@ public class IrcChannelBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(new Color(200, 30, 30))
+						.setColor(defaultLeaveColor)
 						.setDescription(String.format("**%s** (`%s!%s@%s`) has quit.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
 						.setTimestamp(Instant.now())
 						.build()
@@ -228,7 +237,7 @@ public class IrcChannelBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(new Color(127, 127, 127))
+						.setColor(defaultNickChangeColor)
 						.setDescription(String.format("**%s** (`%s!%s@%s`) is now known as **%s**.", event.getOldNick(), user.getNick(), user.getLogin(), user.getHostname(), event.getNewNick()))
 						.setTimestamp(Instant.now())
 						.build()

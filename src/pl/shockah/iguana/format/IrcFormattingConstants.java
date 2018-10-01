@@ -22,6 +22,9 @@ public final class IrcFormattingConstants {
 	@Nonnull
 	public static final String STRIKETHROUGH = "\u001e";
 
+//	@Nonnull
+//	public static final String MONOSPACE = "\u0011";
+
 	@Nonnull
 	public static final String INVERSE = "\u0016";
 
