@@ -2,9 +2,13 @@ package pl.shockah.iguana.format;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
+
+import lombok.EqualsAndHashCode;
+import lombok.experimental.Wither;
 
 public class DiscordFormattingParser implements FormattingParser {
 	@Nonnull
@@ -32,51 +36,131 @@ public class DiscordFormattingParser implements FormattingParser {
 	private static final Pattern codeBlockPattern = Pattern.compile("(?<!`)`{3}((?:\\S+)?)\\r?\\n\\s*((?=\\S).+?)\\r?\\n`{3}(?!`)");
 
 	@Nonnull
+	private static final Pattern backslashPattern = Pattern.compile("\\\\([*_~`])");
+
+	@Nonnull
 	@Override
 	public List<FormattedString> parse(@Nonnull String message) {
-		List<FormattedString> result = new ArrayList<>();
-		Processor processor = new Processor(result);
+		List<FormattedCharacter> characterFormats = new ArrayList<>();
 
-		for (int i = 0; i < message.length(); ) {
-			int codePoint = message.codePointAt(i);
-			processor.process(codePoint);
-			i += Character.charCount(codePoint);
+		for (int i = 0; i < message.length(); i++) {
+			characterFormats.add(new FormattedCharacter(message.charAt(i)));
 		}
 
-		processor.push();
+		handlePattern(codeBlockPattern, 2, message, characterFormats, input -> input.withIgnoreFurtherFormatting(true));
+		handlePattern(inlineCodePattern, 1, message, characterFormats, input -> input);
+		handlePattern(tripleStarPattern, 1, message, characterFormats, input -> input.withBold(true).withItalic(true));
+		handlePattern(doubleStarPattern, 1, message, characterFormats, input -> input.withBold(true));
+		handlePattern(singleStarPattern, 1, message, characterFormats, input -> input.withItalic(true));
+		handlePattern(doubleUnderlinePattern, 1, message, characterFormats, input -> input.withUnderline(true));
+		handlePattern(singleUnderlinePattern, 1, message, characterFormats, input -> input.withItalic(true));
+		handlePattern(strikethroughPattern, 1, message, characterFormats, input -> input.withStrikethrough(true));
+		handlePattern(backslashPattern, 1, message, characterFormats, input -> input);
+
+		List<FormattedString> result = new ArrayList<>();
+		StringBuilder sb = new StringBuilder();
+		FormattedCharacter lastCharacter = null;
+
+		for (FormattedCharacter character : characterFormats) {
+			if (lastCharacter != null && !lastCharacter.sameFormatting(character)) {
+				result.add(new FormattedString(
+						lastCharacter.bold,
+						lastCharacter.italic,
+						lastCharacter.underline,
+						lastCharacter.strikethrough,
+						IrcColor.Default,
+						IrcColor.Default,
+						sb.toString()
+				));
+				sb = new StringBuilder();
+			}
+			sb.append(character.character);
+			lastCharacter = character;
+		}
+
+		if (lastCharacter != null) {
+			result.add(new FormattedString(
+					lastCharacter.bold,
+					lastCharacter.italic,
+					lastCharacter.underline,
+					lastCharacter.strikethrough,
+					IrcColor.Default,
+					IrcColor.Default,
+					sb.toString()
+			));
+		}
+
 		return result;
 	}
 
-	private static class Processor {
-		@Nonnull
-		final List<FormattedString> result;
+	private void handlePattern(@Nonnull Pattern pattern, int contentGroup, @Nonnull String message, @Nonnull List<FormattedCharacter> characterFormats, @Nonnull PatternHandler handler) {
+		Matcher m;
 
-		@Nonnull
-		StringBuilder sb = new StringBuilder();
+		while (true) {
+			m = pattern.matcher(message);
+			if (!m.find())
+				break;
 
-		boolean bold = false;
+			int contentStart = m.start(contentGroup);
+			int contentEnd = m.end(contentGroup);
+			int matchStart = m.start();
+			int matchEnd = m.end();
 
-		boolean italic = false;
-
-		boolean inverse = false;
-
-		boolean underline = false;
-
-		boolean strikethrough = false;
-
-		private Processor(@Nonnull List<FormattedString> result) {
-			this.result = result;
-		}
-
-		void process(int codePoint) {
-			sb.appendCodePoint(codePoint);
-		}
-
-		private void push() {
-			if (sb.length() != 0) {
-				result.add(new FormattedString(bold, italic, underline, strikethrough, inverse, IrcColor.Default, IrcColor.Default, sb.toString()));
-				sb = new StringBuilder();
+			for (int i = contentStart; i < contentEnd; i++) {
+				FormattedCharacter formatted = characterFormats.get(i);
+				if (!formatted.ignoreFurtherFormatting)
+					characterFormats.set(i, handler.handle(formatted));
 			}
+
+			for (int i = contentEnd; i < matchEnd; i++) {
+				characterFormats.remove(i);
+			}
+
+			for (int i = matchStart; i < contentStart; i++) {
+				characterFormats.remove(i);
+			}
+		}
+	}
+
+	private interface PatternHandler {
+		@Nonnull
+		FormattedCharacter handle(@Nonnull FormattedCharacter input);
+	}
+
+	@EqualsAndHashCode
+	private static class FormattedCharacter {
+		final char character;
+
+		@Wither
+		final boolean bold;
+
+		@Wither
+		final boolean italic;
+
+		@Wither
+		final boolean underline;
+
+		@Wither
+		final boolean strikethrough;
+
+		@Wither
+		final boolean ignoreFurtherFormatting;
+
+		private FormattedCharacter(char character) {
+			this(character, false, false, false, false, false);
+		}
+
+		private FormattedCharacter(char character, boolean bold, boolean italic, boolean underline, boolean strikethrough, boolean ignoreFurtherFormatting) {
+			this.character = character;
+			this.bold = bold;
+			this.italic = italic;
+			this.underline = underline;
+			this.strikethrough = strikethrough;
+			this.ignoreFurtherFormatting = ignoreFurtherFormatting;
+		}
+
+		public boolean sameFormatting(@Nonnull FormattedCharacter other) {
+			return other.bold == bold && other.italic == italic && other.underline == underline && other.strikethrough == strikethrough;
 		}
 	}
 }
