@@ -1,4 +1,4 @@
 package pl.shockah.iguana.format;
 
-public interface Formatter<ParseContext, OutputContext> extends FormattingParser<ParseContext>, FormattingOutputer<OutputContext> {
+public interface Formatter<ParseContext, OutputContext, Output> extends FormattingParser<ParseContext>, FormattingOutputer<OutputContext, Output> {
 }

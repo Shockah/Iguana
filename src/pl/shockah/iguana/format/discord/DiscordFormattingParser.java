@@ -50,15 +50,15 @@ public class DiscordFormattingParser implements FormattingParser<Void> {
 			characterFormats.add(new FormattedCharacter(message.charAt(i)));
 		}
 
-		handlePattern(codeBlockPattern, 2, message, characterFormats, input -> input.withIgnoreFurtherFormatting(true));
-		handlePattern(inlineCodePattern, 1, message, characterFormats, input -> input);
-		handlePattern(tripleStarPattern, 1, message, characterFormats, input -> input.withBold(true).withItalic(true));
-		handlePattern(doubleStarPattern, 1, message, characterFormats, input -> input.withBold(true));
-		handlePattern(singleStarPattern, 1, message, characterFormats, input -> input.withItalic(true));
-		handlePattern(doubleUnderlinePattern, 1, message, characterFormats, input -> input.withUnderline(true));
-		handlePattern(singleUnderlinePattern, 1, message, characterFormats, input -> input.withItalic(true));
-		handlePattern(strikethroughPattern, 1, message, characterFormats, input -> input.withStrikethrough(true));
-		handlePattern(backslashPattern, 1, message, characterFormats, input -> input);
+		message = handlePattern(codeBlockPattern, 2, message, characterFormats, input -> input.withIgnoreFurtherFormatting(true));
+		message = handlePattern(inlineCodePattern, 1, message, characterFormats, input -> input);
+		message = handlePattern(tripleStarPattern, 1, message, characterFormats, input -> input.withBold(true).withItalic(true));
+		message = handlePattern(doubleStarPattern, 1, message, characterFormats, input -> input.withBold(true));
+		message = handlePattern(singleStarPattern, 1, message, characterFormats, input -> input.withItalic(true));
+		message = handlePattern(doubleUnderlinePattern, 1, message, characterFormats, input -> input.withUnderline(true));
+		message = handlePattern(singleUnderlinePattern, 1, message, characterFormats, input -> input.withItalic(true));
+		message = handlePattern(strikethroughPattern, 1, message, characterFormats, input -> input.withStrikethrough(true));
+		message = handlePattern(backslashPattern, 1, message, characterFormats, input -> input);
 
 		List<FormattedString> result = new ArrayList<>();
 		StringBuilder sb = new StringBuilder();
@@ -96,7 +96,8 @@ public class DiscordFormattingParser implements FormattingParser<Void> {
 		return result;
 	}
 
-	private void handlePattern(@Nonnull Pattern pattern, int contentGroup, @Nonnull String message, @Nonnull List<FormattedCharacter> characterFormats, @Nonnull PatternHandler handler) {
+	@Nonnull
+	private String handlePattern(@Nonnull Pattern pattern, int contentGroup, @Nonnull String message, @Nonnull List<FormattedCharacter> characterFormats, @Nonnull PatternHandler handler) {
 		Matcher m;
 
 		while (true) {
@@ -115,14 +116,19 @@ public class DiscordFormattingParser implements FormattingParser<Void> {
 					characterFormats.set(i, handler.handle(formatted));
 			}
 
-			for (int i = contentEnd; i < matchEnd; i++) {
+			StringBuilder newMessage = new StringBuilder(message);
+			for (int i = matchEnd - 1; i >= contentEnd; i--) {
 				characterFormats.remove(i);
+				newMessage.deleteCharAt(i);
 			}
-
-			for (int i = matchStart; i < contentStart; i++) {
+			for (int i = contentStart - 1; i >= matchStart; i--) {
 				characterFormats.remove(i);
+				newMessage.deleteCharAt(i);
 			}
+			message = newMessage.toString();
 		}
+
+		return message;
 	}
 
 	private interface PatternHandler {

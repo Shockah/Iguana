@@ -22,6 +22,10 @@ public class FormattedString {
 	@Nonnull
 	public final String text;
 
+	public FormattedString(@Nonnull String text) {
+		this(false, false, false, false, IrcColor.Default, IrcColor.Default, text);
+	}
+
 	public FormattedString(boolean bold, boolean italic, boolean underline, boolean strikethrough, @Nonnull IrcColor textColor, @Nonnull IrcColor backgroundColor, @Nonnull String text) {
 		this(bold, italic, underline, strikethrough, false, textColor, backgroundColor, text);
 	}

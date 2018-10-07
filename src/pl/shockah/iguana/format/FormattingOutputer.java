@@ -4,7 +4,7 @@ import java.util.List;
 
 import javax.annotation.Nonnull;
 
-public interface FormattingOutputer<Context> {
+public interface FormattingOutputer<Context, Output> {
 	@Nonnull
-	String output(@Nonnull List<FormattedString> formattedStrings, Context context);
+	Output output(@Nonnull List<FormattedString> formattedStrings, Context context);
 }

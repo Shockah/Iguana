@@ -58,6 +58,11 @@ public final class IrcFormattingConstants {
 	}
 
 	@Nonnull
+	public static String getColorPrefix(@Nullable IrcColor textColor, @Nullable IrcColor backgroundColor, @Nonnull String text) {
+		return getColorPrefix(textColor, backgroundColor, text.length() > 0 && text.charAt(0) >= '0' && text.charAt(0) <= '9');
+	}
+
+	@Nonnull
 	public static String getColoredText(@Nullable IrcColor textColor, @Nullable IrcColor backgroundColor, @Nonnull String text) {
 		return String.format("%s%s", getColorPrefix(textColor, backgroundColor, text.length() > 0 && text.charAt(0) >= '0' && text.charAt(0) <= '9'), text);
 	}
