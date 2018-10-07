@@ -1,4 +1,4 @@
-package pl.shockah.iguana.format;
+package pl.shockah.iguana.format.discord;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,8 +9,11 @@ import javax.annotation.Nonnull;
 
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Wither;
+import pl.shockah.iguana.format.FormattedString;
+import pl.shockah.iguana.format.FormattingParser;
+import pl.shockah.iguana.format.IrcColor;
 
-public class DiscordFormattingParser implements FormattingParser {
+public class DiscordFormattingParser implements FormattingParser<Void> {
 	@Nonnull
 	private static final Pattern tripleStarPattern = Pattern.compile("(?<!\\*)\\*{3}(?![\\s*])(.*?)(?<![\\s*])\\*{3}(?!\\*)");
 
@@ -40,7 +43,7 @@ public class DiscordFormattingParser implements FormattingParser {
 
 	@Nonnull
 	@Override
-	public List<FormattedString> parse(@Nonnull String message) {
+	public List<FormattedString> parse(@Nonnull String message, Void context) {
 		List<FormattedCharacter> characterFormats = new ArrayList<>();
 
 		for (int i = 0; i < message.length(); i++) {

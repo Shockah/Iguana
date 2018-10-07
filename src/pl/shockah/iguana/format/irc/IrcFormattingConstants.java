@@ -1,9 +1,10 @@
-package pl.shockah.iguana.format;
+package pl.shockah.iguana.format.irc;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import lombok.experimental.UtilityClass;
+import pl.shockah.iguana.format.IrcColor;
 
 @UtilityClass
 public final class IrcFormattingConstants {

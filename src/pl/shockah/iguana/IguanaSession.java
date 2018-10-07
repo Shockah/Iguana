@@ -14,6 +14,8 @@ import javax.security.auth.login.LoginException;
 import lombok.Getter;
 import pl.shockah.iguana.bridge.IrcBridge;
 import pl.shockah.iguana.bridge.IrcServerBridge;
+import pl.shockah.iguana.format.discord.DiscordFormatter;
+import pl.shockah.iguana.format.irc.IrcFormatter;
 
 public class IguanaSession {
 	@Nonnull
@@ -31,6 +33,14 @@ public class IguanaSession {
 	@Nonnull
 	@Getter
 	private final IrcBridge bridge;
+
+	@Nonnull
+	@Getter
+	private final DiscordFormatter discordFormatter = new DiscordFormatter();
+
+	@Nonnull
+	@Getter
+	private final IrcFormatter ircFormatter = new IrcFormatter();
 
 	public IguanaSession(@Nonnull Iguana app, @Nonnull Configuration configuration) throws Exception {
 		this.app = app;

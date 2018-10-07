@@ -1,4 +1,4 @@
-package pl.shockah.iguana.format;
+package pl.shockah.iguana.format.irc;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,7 +7,11 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
 
-public class IrcFormattingParser implements FormattingParser {
+import pl.shockah.iguana.format.FormattedString;
+import pl.shockah.iguana.format.FormattingParser;
+import pl.shockah.iguana.format.IrcColor;
+
+public class IrcFormattingParser implements FormattingParser<Void> {
 	@Nonnull
 	private static final Pattern colorPrefixPattern = Pattern.compile(
 			String.format("%s%s", Pattern.quote(IrcFormattingConstants.COLOR_PREFIX), "((\\d\\d?)(?:,(\\d\\d?))?)?")
@@ -15,7 +19,7 @@ public class IrcFormattingParser implements FormattingParser {
 
 	@Nonnull
 	@Override
-	public List<FormattedString> parse(@Nonnull String message) {
+	public List<FormattedString> parse(@Nonnull String message, Void context) {
 		List<FormattedString> result = new ArrayList<>();
 		Processor processor = new Processor(result);
 

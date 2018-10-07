@@ -4,7 +4,7 @@ import java.util.List;
 
 import javax.annotation.Nonnull;
 
-public interface FormattingParser {
+public interface FormattingParser<Context> {
 	@Nonnull
-	List<FormattedString> parse(@Nonnull String message);
+	List<FormattedString> parse(@Nonnull String message, Context context);
 }

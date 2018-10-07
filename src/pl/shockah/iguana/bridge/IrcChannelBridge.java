@@ -155,7 +155,8 @@ public class IrcChannelBridge {
 	@Nonnull
 	private Either2<String, Image> getFormattedIrcToDiscordMessage(@Nonnull String ircMessage) {
 		ircMessage = ircMessage.replace(ircBot.getUserBot().getNick(), session.getConfiguration().discord.getOwnerUser(session.getDiscord()).getAsMention());
-		return Either2.first(ircMessage);
+		String discordMessage = session.getDiscordFormatter().output(session.getIrcFormatter().parse(ircMessage, null), null);
+		return Either2.first(discordMessage);
 	}
 
 	public void onMessage(@Nonnull MessageEvent event) {
@@ -245,6 +246,8 @@ public class IrcChannelBridge {
 	}
 
 	public void onDiscordMessage(@Nonnull GuildMessageReceivedEvent event) {
-		getIrcChannel().send().message(event.getMessage().getContentDisplay());
+		String discordMessage = event.getMessage().getContentDisplay();
+		String ircMessage = session.getIrcFormatter().output(session.getDiscordFormatter().parse(discordMessage, null), null);
+		getIrcChannel().send().message(ircMessage);
 	}
 }
