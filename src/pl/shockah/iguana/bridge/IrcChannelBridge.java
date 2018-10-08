@@ -1,6 +1,7 @@
 package pl.shockah.iguana.bridge;
 
 import net.dv8tion.jda.core.EmbedBuilder;
+import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.webhook.WebhookMessageBuilder;
@@ -245,8 +246,16 @@ public class IrcChannelBridge {
 	}
 
 	public void onDiscordMessage(@Nonnull GuildMessageReceivedEvent event) {
-		String discordMessage = event.getMessage().getContentDisplay();
-		String ircMessage = session.getIrcFormatter().output(session.getDiscordFormatter().parse(discordMessage, null), null);
-		getIrcChannel().send().message(ircMessage);
+		String discordMessage = event.getMessage().getContentDisplay().trim();
+		if (!discordMessage.equals("")) {
+			String ircMessage = session.getIrcFormatter().output(session.getDiscordFormatter().parse(discordMessage, null), null);
+			getIrcChannel().send().message(ircMessage);
+		}
+
+		for (Message.Attachment attachment : event.getMessage().getAttachments()) {
+			String url = attachment.getUrl();
+			if (url != null && !url.equals(""))
+				getIrcChannel().send().message(String.format("[ Attachment: %s ]", url));
+		}
 	}
 }
