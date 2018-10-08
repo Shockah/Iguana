@@ -138,7 +138,7 @@ public class IrcChannelBridge {
 	public String getAvatarUrl(@Nonnull String nickname) {
 		LCHColorSpace lchBackgroundColor = getLchBackgroundColorForNickname(nickname);
 		LCHColorSpace lchTextColor = getLchTextColorForBackgroundColor(lchBackgroundColor);
-		return session.getConfiguration().discord.getAvatarUrl(nickname, lchBackgroundColor.toRGB(), lchTextColor.toRGB());
+		return session.getConfiguration().appearance.getAvatarUrl(nickname, lchBackgroundColor.toRGB(), lchTextColor.toRGB());
 	}
 
 	@Nonnull
