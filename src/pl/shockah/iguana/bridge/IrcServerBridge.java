@@ -7,9 +7,11 @@ import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.exception.IrcException;
 import org.pircbotx.hooks.ListenerAdapter;
+import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.JoinEvent;
 import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.hooks.events.NickChangeEvent;
+import org.pircbotx.hooks.events.NoticeEvent;
 import org.pircbotx.hooks.events.PartEvent;
 import org.pircbotx.hooks.events.QuitEvent;
 import org.pircbotx.hooks.managers.ThreadedListenerManager;
@@ -135,7 +137,29 @@ public class IrcServerBridge {
 			if (channel == null)
 				return;
 
-			getChannelBridge(channel).onMessage(event);
+			getChannelBridge(channel).onChannelMessage(event);
+		}
+
+		@Override
+		public void onAction(ActionEvent event) throws Exception {
+			super.onAction(event);
+
+			Channel channel = event.getChannel();
+			if (channel == null)
+				return;
+
+			getChannelBridge(channel).onChannelAction(event);
+		}
+
+		@Override
+		public void onNotice(NoticeEvent event) throws Exception {
+			super.onNotice(event);
+
+			Channel channel = event.getChannel();
+			if (channel == null)
+				return;
+
+			getChannelBridge(channel).onChannelNotice(event);
 		}
 
 		@Override

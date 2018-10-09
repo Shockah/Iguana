@@ -9,9 +9,11 @@ import net.dv8tion.jda.webhook.WebhookMessageBuilder;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
+import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.JoinEvent;
 import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.hooks.events.NickChangeEvent;
+import org.pircbotx.hooks.events.NoticeEvent;
 import org.pircbotx.hooks.events.PartEvent;
 import org.pircbotx.hooks.events.QuitEvent;
 
@@ -31,6 +33,7 @@ import lombok.Getter;
 import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.IguanaSession;
 import pl.shockah.iguana.WebhookClientWrapper;
+import pl.shockah.iguana.format.irc.IrcFormattingConstants;
 import pl.shockah.unicorn.UnexpectedException;
 import pl.shockah.unicorn.collection.Either2;
 import pl.shockah.unicorn.color.LCHColorSpace;
@@ -159,7 +162,56 @@ public class IrcChannelBridge {
 		return session.getDiscordFormatter().output(session.getIrcFormatter().parse(ircMessage, null), null);
 	}
 
-	public void onMessage(@Nonnull MessageEvent event) {
+	private void onChannelMessage(@Nonnull User user, @Nonnull String message) {
+		WebhookMessageBuilder builder = new WebhookMessageBuilder()
+				.setUsername(getFullIrcNickname(user))
+				.setAvatarUrl(getAvatarUrl(user.getNick()));
+
+		getFormattedIrcToDiscordMessage(message).apply(
+				builder::setContent,
+				image -> {
+					try {
+						BufferedImage swingImage = SwingFXUtils.fromFXImage(image, null);
+						ByteArrayOutputStream baos = new ByteArrayOutputStream();
+						ImageIO.write(swingImage, "png", baos);
+						builder.addFile("formatted-irc-message.png", baos.toByteArray());
+					} catch (IOException e) {
+						throw new UnexpectedException(e);
+					}
+				}
+		);
+
+		getWebhookClient().send(builder.build());
+	}
+
+	public void onChannelMessage(@Nonnull MessageEvent event) {
+		Channel channel = event.getChannel();
+		if (channel == null)
+			return;
+
+		User user = event.getUser();
+		if (user == null)
+			return;
+
+		onChannelMessage(user, event.getMessage());
+	}
+
+	public void onChannelAction(@Nonnull ActionEvent event) {
+		Channel channel = event.getChannel();
+		if (channel == null)
+			return;
+
+		User user = event.getUser();
+		if (user == null)
+			return;
+
+		String italicizedMessage = event.getMessage();
+		italicizedMessage = italicizedMessage.replace(IrcFormattingConstants.RESET, IrcFormattingConstants.RESET + IrcFormattingConstants.ITALIC);
+		italicizedMessage = IrcFormattingConstants.ITALIC + italicizedMessage;
+		onChannelMessage(user, italicizedMessage);
+	}
+
+	public void onChannelNotice(@Nonnull NoticeEvent event) {
 		Channel channel = event.getChannel();
 		if (channel == null)
 			return;
@@ -173,12 +225,16 @@ public class IrcChannelBridge {
 				.setAvatarUrl(getAvatarUrl(user.getNick()));
 
 		getFormattedIrcToDiscordMessage(event.getMessage()).apply(
-				builder::setContent,
+				text -> builder.addEmbeds(new EmbedBuilder()
+						.setTitle("Notice")
+						.setDescription(text)
+						.build()),
 				image -> {
 					try {
 						BufferedImage swingImage = SwingFXUtils.fromFXImage(image, null);
 						ByteArrayOutputStream baos = new ByteArrayOutputStream();
 						ImageIO.write(swingImage, "png", baos);
+						builder.setContent("**Notice**");
 						builder.addFile("formatted-irc-message.png", baos.toByteArray());
 					} catch (IOException e) {
 						throw new UnexpectedException(e);
