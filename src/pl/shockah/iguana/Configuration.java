@@ -7,10 +7,13 @@ import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.entities.Webhook;
 
+import java.awt.Color;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
@@ -18,6 +21,7 @@ import javax.annotation.Nullable;
 
 import lombok.Getter;
 import lombok.Setter;
+import pl.shockah.iguana.format.IrcColor;
 import pl.shockah.jay.JSONList;
 import pl.shockah.jay.JSONObject;
 import pl.shockah.unicorn.UnexpectedException;
@@ -29,7 +33,6 @@ public final class Configuration {
 		Configuration config = new Configuration();
 		json.onObject("discord", jDiscord -> {
 			jDiscord.onString("token", config.discord::setToken);
-			jDiscord.onString("avatarUrlFormat", config.discord::setAvatarUrlFormat);
 			jDiscord.onLong("guildId", config.discord::setGuildId);
 			jDiscord.onLong("ownerUserId", config.discord::setOwnerUserId);
 		});
@@ -59,6 +62,21 @@ public final class Configuration {
 				}
 			});
 		});
+		json.onObject("appearance", jAppearance -> {
+			jAppearance.onString("avatarUrlFormat", config.appearance::setAvatarUrlFormat);
+			jAppearance.onObject("ircColors", jIrcColors -> {
+				for (String jIrcColorKey : jIrcColors.keySet()) {
+					try {
+						IrcColor ircColor = IrcColor.valueOf(jIrcColorKey);
+						JSONList<Integer> jRgb = jIrcColors.getList(jIrcColorKey).ofInts();
+						//noinspection ConstantConditions
+						Color color = new Color(jRgb.get(0), jRgb.get(1), jRgb.get(2));
+						config.appearance.ircColors.put(ircColor, color);
+					} catch (Exception ignored) {
+					}
+				}
+			});
+		});
 		return config;
 	}
 
@@ -67,7 +85,6 @@ public final class Configuration {
 		return JSONObject.of(
 				"discord", JSONObject.of(
 						"token", discord.token,
-						"avatarUrlFormat", discord.avatarUrlFormat,
 						"guildId", discord.guildId,
 						"ownerUserId", discord.ownerUserId
 				),
@@ -96,6 +113,16 @@ public final class Configuration {
 										))
 										.collect(Collectors.toList())
 						)
+				),
+				"appearance", JSONObject.of(
+						"avatarUrlFormat", appearance.avatarUrlFormat,
+						"ircColors", new JSONObject(
+								appearance.ircColors.entrySet().stream()
+										.collect(Collectors.toMap(
+												entry -> entry.getKey().name(),
+												entry -> JSONList.of(entry.getValue().getRed(), entry.getValue().getGreen(), entry.getValue().getBlue())
+										))
+						)
 				)
 		);
 	}
@@ -108,27 +135,9 @@ public final class Configuration {
 	public static final class Discord {
 		private String token;
 
-		private String avatarUrlFormat;
-
 		private long guildId;
 
 		private long ownerUserId;
-
-		@Nullable
-		public String getAvatarUrl(@Nonnull String nickname, @Nonnull RGBColorSpace backgroundColor, @Nonnull RGBColorSpace textColor) {
-			if (avatarUrlFormat == null)
-				return null;
-
-			try {
-				String url = avatarUrlFormat;
-				url = url.replace("%nick%", URLEncoder.encode(nickname, "UTF-8"));
-				url = url.replace("%backgroundRgb%", String.format("%02x%02x%02x", (int)(backgroundColor.r * 255), (int)(backgroundColor.g * 255), (int)(backgroundColor.b * 255)));
-				url = url.replace("%textRgb%", String.format("%02x%02x%02x", (int)(textColor.r * 255), (int)(textColor.g * 255), (int)(textColor.b * 255)));
-				return url;
-			} catch (UnsupportedEncodingException e) {
-				throw new UnexpectedException(e);
-			}
-		}
 
 		@Nonnull
 		public Guild getGuild(@Nonnull JDA jda) {
@@ -215,6 +224,57 @@ public final class Configuration {
 					return jda.getWebhookById(webhookId).complete();
 				}
 			}
+		}
+	}
+
+	@Nonnull
+	public final Appearance appearance = new Appearance();
+
+	@Getter
+	@Setter
+	public static final class Appearance {
+		private String avatarUrlFormat;
+
+		private final Map<IrcColor, Color> ircColors = new TreeMap<>();
+
+		public Appearance() {
+			ircColors.put(IrcColor.White, new Color(255, 255, 255));
+			ircColors.put(IrcColor.Black, new Color(0, 0, 0));
+			ircColors.put(IrcColor.Blue, new Color(0, 0, 126));
+			ircColors.put(IrcColor.Green, new Color(0, 147, 0));
+			ircColors.put(IrcColor.Red, new Color(254, 0, 0));
+			ircColors.put(IrcColor.Maroon, new Color(126, 0, 0));
+			ircColors.put(IrcColor.Purple, new Color(152, 0, 158));
+			ircColors.put(IrcColor.Orange, new Color(253, 127, 0));
+			ircColors.put(IrcColor.Yellow, new Color(255, 255, 0));
+			ircColors.put(IrcColor.Lime, new Color(0, 252, 0));
+			ircColors.put(IrcColor.Teal, new Color(0, 147, 147));
+			ircColors.put(IrcColor.Cyan, new Color(0, 255, 253));
+			ircColors.put(IrcColor.Royal, new Color(0, 0, 252));
+			ircColors.put(IrcColor.Fuchsia, new Color(255, 0, 254));
+			ircColors.put(IrcColor.Gray, new Color(89, 128, 127));
+			ircColors.put(IrcColor.Silver, new Color(210, 210, 210));
+		}
+
+		@Nullable
+		public String getAvatarUrl(@Nonnull String nickname, @Nonnull RGBColorSpace backgroundColor, @Nonnull RGBColorSpace textColor) {
+			if (avatarUrlFormat == null)
+				return null;
+
+			try {
+				String url = avatarUrlFormat;
+				url = url.replace("%nick%", URLEncoder.encode(nickname, "UTF-8"));
+				url = url.replace("%backgroundRgb%", String.format("%02x%02x%02x", (int)(backgroundColor.r * 255), (int)(backgroundColor.g * 255), (int)(backgroundColor.b * 255)));
+				url = url.replace("%textRgb%", String.format("%02x%02x%02x", (int)(textColor.r * 255), (int)(textColor.g * 255), (int)(textColor.b * 255)));
+				return url;
+			} catch (UnsupportedEncodingException e) {
+				throw new UnexpectedException(e);
+			}
+		}
+
+		@Nonnull
+		public Color getColor(@Nonnull IrcColor ircColor) {
+			return ircColors.get(ircColor);
 		}
 	}
 }

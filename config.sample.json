@@ -1,7 +1,6 @@
 {
 	"discord": {
-		"token": "xXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxX",
-		"avatarUrlFormat": "http://example.com/avatar-r%r%-g%g%-b%b%.png"
+		"token": "xXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxX"
 	},
 	"irc": {
 		"servers": [
@@ -15,5 +14,26 @@
 				]
 			}
 		]
+	},
+	"appearance": {
+		"avatarUrlFormat": "http://example.com/avatar-r%r%-g%g%-b%b%.png",
+		"ircColors": {
+			"White": [255, 255, 255],
+			"Black": [0, 0, 0],
+			"Blue": [0, 0, 126],
+			"Green": [0, 147, 0],
+			"Red": [254, 0, 0],
+			"Maroon": [126, 0, 0],
+			"Purple": [152, 0, 158],
+			"Orange": [253, 127, 0],
+			"Yellow": [255, 255, 0],
+			"Lime": [0, 252, 0],
+			"Teal": [0, 147, 147],
+			"Cyan": [0, 255, 253],
+			"Royal": [0, 0, 252],
+			"Fuchsia": [255, 0, 254],
+			"Gray": [89, 128, 127],
+			"Silver": [210, 210, 210]
+		}
 	}
 }

@@ -9,7 +9,7 @@ public enum IrcColor {
 	White("00"),
 	Black("01"),
 	Blue("02"),
-	Green ("03"),
+	Green("03"),
 	Red("04"),
 	Maroon("05"),
 	Purple("06"),
