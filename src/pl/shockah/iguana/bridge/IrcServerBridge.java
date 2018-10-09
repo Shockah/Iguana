@@ -14,6 +14,7 @@ import org.pircbotx.hooks.events.NickChangeEvent;
 import org.pircbotx.hooks.events.NoticeEvent;
 import org.pircbotx.hooks.events.PartEvent;
 import org.pircbotx.hooks.events.QuitEvent;
+import org.pircbotx.hooks.events.TopicEvent;
 import org.pircbotx.hooks.managers.ThreadedListenerManager;
 import org.pircbotx.snapshot.UserChannelDaoSnapshot;
 
@@ -167,9 +168,9 @@ public class IrcServerBridge {
 			super.onJoin(event);
 
 			if (event.getBot().getUserBot().equals(event.getUser()))
-				return;
-
-			getChannelBridge(event.getChannel()).onJoin(event);
+				getChannelBridge(event.getChannel()).onSelfJoin(event);
+			else
+				getChannelBridge(event.getChannel()).onJoin(event);
 		}
 
 		@Override
@@ -211,6 +212,17 @@ public class IrcServerBridge {
 				if (bridge.getIrcChannel().getUsers().contains(event.getUser()))
 					bridge.onNickChange(event);
 			});
+		}
+
+		@Override
+		public void onTopic(TopicEvent event) throws Exception {
+			super.onTopic(event);
+
+			Channel channel = event.getChannel();
+			if (channel == null)
+				return;
+
+			getChannelBridge(channel).onTopic(event);
 		}
 	}
 }

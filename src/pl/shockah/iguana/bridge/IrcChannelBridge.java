@@ -9,6 +9,7 @@ import net.dv8tion.jda.webhook.WebhookMessageBuilder;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
+import org.pircbotx.UserHostmask;
 import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.JoinEvent;
 import org.pircbotx.hooks.events.MessageEvent;
@@ -16,6 +17,7 @@ import org.pircbotx.hooks.events.NickChangeEvent;
 import org.pircbotx.hooks.events.NoticeEvent;
 import org.pircbotx.hooks.events.PartEvent;
 import org.pircbotx.hooks.events.QuitEvent;
+import org.pircbotx.hooks.events.TopicEvent;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -87,7 +89,10 @@ public class IrcChannelBridge {
 	public static final Color defaultLeaveColor = new Color(200, 30, 30);
 
 	@Nonnull
-	public static final Color defaultNickChangeColor = new Color(127, 127, 127);
+	public static final Color defaultNickChangeColor = new Color(140, 163, 255);
+
+	@Nonnull
+	public static final Color defaultOtherActionColor = new Color(127, 127, 127);
 
 	public IrcChannelBridge(@Nonnull IrcServerBridge serverBridge, @Nonnull Configuration.IRC.Server.Channel ircChannelConfig) {
 		session = serverBridge.getSession();
@@ -245,6 +250,15 @@ public class IrcChannelBridge {
 		getWebhookClient().send(builder.build());
 	}
 
+	public void onSelfJoin(@Nonnull JoinEvent event) {
+		Channel channel = event.getChannel();
+		if (channel == null)
+			return;
+
+		if (!channel.getTopic().equals(getDiscordChannel().getTopic()))
+			getDiscordChannel().getManager().setTopic(channel.getTopic()).queue();
+	}
+
 	public void onJoin(@Nonnull JoinEvent event) {
 		User user = event.getUser();
 		if (user == null)
@@ -297,6 +311,27 @@ public class IrcChannelBridge {
 						.setColor(defaultNickChangeColor)
 						.setDescription(String.format("**%s** (`%s!%s@%s`) is now known as **%s**.", event.getOldNick(), user.getNick(), user.getLogin(), user.getHostname(), event.getNewNick()))
 						.setTimestamp(Instant.now())
+						.build()
+		).queue();
+	}
+
+	public void onTopic(@Nonnull TopicEvent event) {
+		Channel channel = event.getChannel();
+		if (channel == null)
+			return;
+
+		UserHostmask user = event.getUser();
+		if (user == null)
+			return;
+
+		getDiscordChannel().getManager().setTopic(event.getTopic()).queue();
+
+		getDiscordChannel().sendMessage(
+				new EmbedBuilder()
+						.setColor(defaultOtherActionColor)
+						.setDescription(String.format("**%s** (`%s!%s@%s`) changed the topic.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
+						.addField("Old", event.getOldTopic().equals("") ? "<empty>" : event.getOldTopic(), false)
+						.addField("New", event.getTopic().equals("") ? "<empty>" : event.getTopic(), false)
 						.build()
 		).queue();
 	}
