@@ -14,6 +14,7 @@ import javax.security.auth.login.LoginException;
 import lombok.Getter;
 import pl.shockah.iguana.bridge.IrcBridge;
 import pl.shockah.iguana.bridge.IrcServerBridge;
+import pl.shockah.iguana.command.impl.OnlineCommand;
 import pl.shockah.iguana.format.discord.DiscordFormatter;
 import pl.shockah.iguana.format.irc.IrcFormatter;
 
@@ -46,6 +47,7 @@ public class IguanaSession {
 		this.app = app;
 		this.configuration = configuration;
 		bridge = new IrcBridge(this);
+		registerCommands();
 
 		try {
 			discord = new JDABuilder(AccountType.BOT).addEventListener(new ListenerAdapter() {
@@ -79,6 +81,10 @@ public class IguanaSession {
 		} catch (LoginException e) {
 			throw new Exception(e);
 		}
+	}
+
+	private void registerCommands() {
+		bridge.getCommandManager().register(new OnlineCommand());
 	}
 
 	public static class Exception extends java.lang.Exception {

@@ -15,6 +15,8 @@ import javax.annotation.Nonnull;
 import lombok.Getter;
 import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.IguanaSession;
+import pl.shockah.iguana.command.CommandManager;
+import pl.shockah.util.Box;
 import pl.shockah.util.ReadWriteMap;
 
 public class IrcBridge extends ListenerAdapter {
@@ -29,6 +31,10 @@ public class IrcBridge extends ListenerAdapter {
 	@Nonnull
 	@Getter(lazy = true)
 	private final TextChannel discordManagementChannel = session.getConfiguration().irc.getDiscordManagementChannel(session.getDiscord());
+
+	@Nonnull
+	@Getter
+	private final CommandManager commandManager = new CommandManager();
 
 	public IrcBridge(@Nonnull IguanaSession session) {
 		this.session = session;
@@ -127,11 +133,14 @@ public class IrcBridge extends ListenerAdapter {
 			return;
 
 		servers.iterate((ircServerConfig, serverBridge, iterator) -> {
+			Box<Boolean> handled = new Box<>(false);
+
 			serverBridge.getChannels().iterate((ircChannelConfig, channelBridge, iterator2) -> {
 				if (channelBridge.getDiscordChannel().equals(event.getChannel())) {
 					channelBridge.onDiscordMessage(event);
 					iterator.stop();
 					iterator2.stop();
+					handled.value = true;
 				}
 			});
 		});

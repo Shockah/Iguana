@@ -35,6 +35,8 @@ import lombok.Getter;
 import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.IguanaSession;
 import pl.shockah.iguana.WebhookClientWrapper;
+import pl.shockah.iguana.command.ChannelCommand;
+import pl.shockah.iguana.command.CommandCall;
 import pl.shockah.iguana.format.irc.IrcFormattingConstants;
 import pl.shockah.unicorn.UnexpectedException;
 import pl.shockah.unicorn.collection.Either2;
@@ -150,7 +152,7 @@ public class IrcChannelBridge {
 	}
 
 	@Nonnull
-	private String getFullIrcNickname(@Nonnull User user) {
+	public String getFullIrcNickname(@Nonnull User user) {
 		String nickname = user.getNick();
 		if (getIrcChannel().hasVoice(user))
 			nickname = String.format("+%s", nickname);
@@ -339,6 +341,15 @@ public class IrcChannelBridge {
 	public void onDiscordMessage(@Nonnull GuildMessageReceivedEvent event) {
 		String discordMessage = event.getMessage().getContentDisplay().trim();
 		if (!discordMessage.equals("")) {
+			CommandCall call = getSession().getBridge().getCommandManager().parseCommandCall(discordMessage);
+			if (call != null) {
+				ChannelCommand command = getSession().getBridge().getCommandManager().getCommandForChannelContext(call.commandName);
+				if (command != null) {
+					command.execute(this, call.input);
+					return;
+				}
+			}
+
 			String ircMessage = session.getIrcFormatter().output(session.getDiscordFormatter().parse(discordMessage, null), null);
 			getIrcChannel().send().message(ircMessage);
 		}
