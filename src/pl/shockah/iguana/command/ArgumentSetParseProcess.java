@@ -7,7 +7,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -29,6 +31,12 @@ public final class ArgumentSetParseProcess {
 
 	@Nonnull
 	public final Map<String, Argument> nameToArgument = Collections.unmodifiableMap(modifiableNameToArgument);
+
+	@Nonnull
+	public final Set<Argument> alreadySetArguments = new HashSet<>();
+
+	@Nonnull
+	public final Set<Argument> requiredArguments = new HashSet<>();
 
 	@Nullable
 	public final Argument defaultArgument;
@@ -53,9 +61,9 @@ public final class ArgumentSetParseProcess {
 
 			Argument argument;
 			if (Collection.class.isAssignableFrom(field.getType()))
-				argument = new CollectionArgument(field, argumentSet, argumentName, argumentType);
+				argument = new CollectionArgument(this, field, argumentSet, argumentName, argumentType);
 			else
-				argument = new ValueArgument(field, argumentSet, argumentName, argumentType);
+				argument = new ValueArgument(this, field, argumentSet, argumentName, argumentType);
 
 			if (argumentAnnotation.isDefault()) {
 				if (defaultArgument != null)
@@ -65,6 +73,9 @@ public final class ArgumentSetParseProcess {
 				modifiableFieldToArgument.put(field, argument);
 				modifiableNameToArgument.put(argumentName, argument);
 			}
+
+			if (argumentAnnotation.isRequired())
+				requiredArguments.add(argument);
 		}
 
 		this.defaultArgument = defaultArgument;
@@ -88,6 +99,9 @@ public final class ArgumentSetParseProcess {
 
 	protected static abstract class Argument {
 		@Nonnull
+		public final ArgumentSetParseProcess process;
+
+		@Nonnull
 		public final Field field;
 
 		@Nonnull
@@ -99,7 +113,8 @@ public final class ArgumentSetParseProcess {
 		@Nonnull
 		public final ArgumentSet.ArgumentType type;
 
-		public Argument(@Nonnull Field field, @Nonnull ArgumentSet argumentSet, @Nonnull String name, @Nonnull ArgumentSet.ArgumentType type) {
+		public Argument(@Nonnull ArgumentSetParseProcess process, @Nonnull Field field, @Nonnull ArgumentSet argumentSet, @Nonnull String name, @Nonnull ArgumentSet.ArgumentType type) {
+			this.process = process;
 			this.field = field;
 			this.argumentSet = argumentSet;
 			this.name = name;
@@ -111,14 +126,15 @@ public final class ArgumentSetParseProcess {
 	}
 
 	protected static class ValueArgument extends Argument {
-		public ValueArgument(@Nonnull Field field, @Nonnull ArgumentSet argumentSet, @Nonnull String name, @Nonnull ArgumentSet.ArgumentType type) {
-			super(field, argumentSet, name, type);
+		public ValueArgument(@Nonnull ArgumentSetParseProcess process, @Nonnull Field field, @Nonnull ArgumentSet argumentSet, @Nonnull String name, @Nonnull ArgumentSet.ArgumentType type) {
+			super(process, field, argumentSet, name, type);
 		}
 
 		@Override
 		public void put(@Nullable Object value) {
 			try {
 				field.set(argumentSet, value);
+				process.alreadySetArguments.add(this);
 			} catch (Exception e) {
 				throw new UnexpectedException(e);
 			}
@@ -132,8 +148,8 @@ public final class ArgumentSetParseProcess {
 		private boolean first = true;
 
 		@SuppressWarnings("unchecked")
-		public CollectionArgument(@Nonnull Field field, @Nonnull ArgumentSet argumentSet, @Nonnull String name, @Nonnull ArgumentSet.ArgumentType type) {
-			super(field, argumentSet, name, type);
+		public CollectionArgument(@Nonnull ArgumentSetParseProcess process, @Nonnull Field field, @Nonnull ArgumentSet argumentSet, @Nonnull String name, @Nonnull ArgumentSet.ArgumentType type) {
+			super(process, field, argumentSet, name, type);
 
 			Collection<Object> collection = null;
 			try {
@@ -160,6 +176,8 @@ public final class ArgumentSetParseProcess {
 
 			if (value != null)
 				collection.add(value);
+
+			process.alreadySetArguments.add(this);
 		}
 	}
 }

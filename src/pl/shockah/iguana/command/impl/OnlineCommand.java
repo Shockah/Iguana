@@ -1,6 +1,7 @@
 package pl.shockah.iguana.command.impl;
 
 import net.dv8tion.jda.core.EmbedBuilder;
+import net.dv8tion.jda.core.entities.Message;
 
 import org.pircbotx.Channel;
 import org.pircbotx.User;
@@ -23,7 +24,7 @@ public class OnlineCommand implements ChannelCommand, NamedCommand {
 	private final String name = "online";
 
 	@Override
-	public void execute(@Nonnull IrcChannelBridge channel, @Nonnull String input) {
+	public void execute(@Nonnull IrcChannelBridge channel, @Nonnull Message executingMessage, @Nonnull String input) {
 		Channel ircChannel = channel.getIrcChannel();
 		List<User> ircUsers = new ArrayList<>(ircChannel.getUsers());
 

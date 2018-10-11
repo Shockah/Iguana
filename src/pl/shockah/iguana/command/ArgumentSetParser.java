@@ -11,7 +11,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import pl.shockah.util.Box;
-import pl.shockah.util.UnexpectedException;
 
 public class ArgumentSetParser<T extends ArgumentSet> {
 	@Nonnull
@@ -28,7 +27,7 @@ public class ArgumentSetParser<T extends ArgumentSet> {
 	}
 
 	@Nonnull
-	public T parse(@Nonnull String textInput) {
+	public T parse(@Nonnull String textInput) throws ArgumentSetParserException {
 		try {
 			T argumentSet = clazz.newInstance();
 			ArgumentSetParseProcess process = new ArgumentSetParseProcess(argumentSet);
@@ -61,10 +60,15 @@ public class ArgumentSetParser<T extends ArgumentSet> {
 				}
 			}
 
+			for (ArgumentSetParseProcess.Argument argument : process.requiredArguments) {
+				if (!process.alreadySetArguments.contains(argument))
+					throw new ArgumentSetParserException(String.format("Missing required argument `%s`.", argument.name));
+			}
+
 			argumentSet.finalValidation();
 			return argumentSet;
 		} catch (Exception e) {
-			throw new UnexpectedException(e);
+			throw new ArgumentSetParserException(e);
 		}
 	}
 
@@ -94,23 +98,22 @@ public class ArgumentSetParser<T extends ArgumentSet> {
 		}
 	}
 
-	public static boolean parseBoolean(@Nonnull String rawValue) {
+	public static boolean parseBoolean(@Nonnull String rawValue) throws ArgumentSetParserException {
 		if (rawValue.equalsIgnoreCase("true") || rawValue.equalsIgnoreCase("t") || rawValue.equalsIgnoreCase("yes") || rawValue.equalsIgnoreCase("y"))
 			return true;
 		else if (rawValue.equalsIgnoreCase("false") || rawValue.equalsIgnoreCase("f") || rawValue.equalsIgnoreCase("no") || rawValue.equalsIgnoreCase("n"))
 			return false;
 		else
-			throw new IllegalArgumentException(String.format("Cannot parse `%s` as boolean.", rawValue));
+			throw new ArgumentSetParserException(String.format("Cannot parse `%s` as boolean.", rawValue));
 	}
 
 	@Nonnull
 	@SuppressWarnings("unchecked")
-	public static <T extends Enum<?>> T parseEnum(@Nonnull Class<T> clazz, @Nonnull String rawValue) {
+	public static <T extends Enum<?>> T parseEnum(@Nonnull Class<T> clazz, @Nonnull String rawValue) throws ArgumentSetParserException {
 		for (Object obj : clazz.getEnumConstants()) {
 			Enum<?> enumConst = (Enum<?>)obj;
-			if (enumConst.name().equalsIgnoreCase(rawValue)) {
+			if (enumConst.name().equalsIgnoreCase(rawValue))
 				return (T)enumConst;
-			}
 		}
 
 		try {
@@ -124,11 +127,11 @@ public class ArgumentSetParser<T extends ArgumentSet> {
 		} catch (NumberFormatException ignored) {
 		}
 
-		throw new IllegalArgumentException(String.format("Cannot parse `%s` as enum `%s`.", rawValue, clazz.getSimpleName()));
+		throw new ArgumentSetParserException(String.format("Cannot parse `%s` as enum `%s`.", rawValue, clazz.getSimpleName()));
 	}
 
 	@SuppressWarnings("unchecked")
-	protected void putArgumentValue(@Nonnull ArgumentSetParseProcess.Argument argument, @Nonnull String rawValue) {
+	protected void putArgumentValue(@Nonnull ArgumentSetParseProcess.Argument argument, @Nonnull String rawValue) throws ArgumentSetParserException {
 		Class<?> clazz = argument.field.getType();
 		switch (argument.type) {
 			case Bool: {
@@ -185,12 +188,12 @@ public class ArgumentSetParser<T extends ArgumentSet> {
 			default:
 				break;
 		}
-		throw new IllegalArgumentException(String.format("Cannot handle argument `%s` of type `%s`.", argument.name, argument.type.name()));
+		throw new ArgumentSetParserException(String.format("Cannot handle argument `%s` of type `%s`.", argument.name, argument.type.name()));
 	}
 
-	private void putArgumentValueInternal(@Nonnull ArgumentSetParseProcess.Argument argument, @Nullable Object value) {
+	private void putArgumentValueInternal(@Nonnull ArgumentSetParseProcess.Argument argument, @Nullable Object value) throws ArgumentSetParserException {
 		if (!argument.argumentSet.isValueValid(argument.field, value))
-			throw new IllegalArgumentException(String.format("Invalid value for argument `%s`.", argument.name));
+			throw new ArgumentSetParserException(String.format("Invalid value for argument `%s`.", argument.name));
 		argument.put(value);
 	}
 }

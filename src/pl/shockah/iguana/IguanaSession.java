@@ -14,6 +14,7 @@ import javax.security.auth.login.LoginException;
 import lombok.Getter;
 import pl.shockah.iguana.bridge.IrcBridge;
 import pl.shockah.iguana.bridge.IrcServerBridge;
+import pl.shockah.iguana.command.impl.JoinCommand;
 import pl.shockah.iguana.command.impl.OnlineCommand;
 import pl.shockah.iguana.format.discord.DiscordFormatter;
 import pl.shockah.iguana.format.irc.IrcFormatter;
@@ -70,11 +71,7 @@ public class IguanaSession {
 							}
 						});
 
-						try {
-							app.saveConfigJson(configuration.write());
-						} catch (IOException e) {
-							throw new RuntimeException(e);
-						}
+						saveConfiguration();
 					}).start();
 				}
 			}).addEventListener(bridge).setToken(configuration.discord.getToken()).build();
@@ -83,8 +80,20 @@ public class IguanaSession {
 		}
 	}
 
+	public void saveConfiguration() {
+		try {
+			app.saveConfigJson(configuration.write());
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
 	private void registerCommands() {
+		// channel-specific commands
 		bridge.getCommandManager().register(new OnlineCommand());
+
+		// server-specific commands
+		bridge.getCommandManager().register(new JoinCommand());
 	}
 
 	public static class Exception extends java.lang.Exception {

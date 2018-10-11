@@ -32,6 +32,8 @@ public abstract class ArgumentSet {
 
 		boolean isDefault() default false;
 
+		boolean isRequired() default true;
+
 		@Nonnull
 		ArgumentType type() default ArgumentType.Auto;
 	}

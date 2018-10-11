@@ -345,7 +345,7 @@ public class IrcChannelBridge {
 			if (call != null) {
 				ChannelCommand command = getSession().getBridge().getCommandManager().getCommandForChannelContext(call.commandName);
 				if (command != null) {
-					command.execute(this, call.input);
+					command.execute(this, event.getMessage(), call.input);
 					return;
 				}
 			}
