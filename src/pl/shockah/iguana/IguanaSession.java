@@ -38,7 +38,7 @@ public class IguanaSession {
 
 	@Nonnull
 	@Getter
-	private final DiscordFormatter discordFormatter = new DiscordFormatter();
+	private final DiscordFormatter discordFormatter;
 
 	@Nonnull
 	@Getter
@@ -47,6 +47,7 @@ public class IguanaSession {
 	public IguanaSession(@Nonnull Iguana app, @Nonnull Configuration configuration) throws Exception {
 		this.app = app;
 		this.configuration = configuration;
+		discordFormatter = new DiscordFormatter(configuration.appearance);
 		bridge = new IrcBridge(this);
 		registerCommands();
 

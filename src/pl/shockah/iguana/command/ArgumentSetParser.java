@@ -120,9 +120,8 @@ public class ArgumentSetParser<T extends ArgumentSet> {
 			int ordinal = Integer.parseInt(rawValue);
 			for (Object obj : clazz.getEnumConstants()) {
 				Enum<?> enumConst = (Enum<?>)obj;
-				if (enumConst.ordinal() == ordinal) {
+				if (enumConst.ordinal() == ordinal)
 					return (T)enumConst;
-				}
 			}
 		} catch (NumberFormatException ignored) {
 		}
