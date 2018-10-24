@@ -29,8 +29,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 
-import javafx.embed.swing.SwingFXUtils;
-import javafx.scene.image.Image;
 import lombok.Getter;
 import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.IguanaSession;
@@ -164,7 +162,7 @@ public class IrcChannelBridge {
 	}
 
 	@Nonnull
-	private Either2<String, Image> getFormattedIrcToDiscordMessage(@Nonnull String ircMessage) {
+	private Either2<String, BufferedImage> getFormattedIrcToDiscordMessage(@Nonnull String ircMessage) {
 		ircMessage = ircMessage.replace(ircBot.getUserBot().getNick(), session.getConfiguration().discord.getOwnerUser(session.getDiscord()).getAsMention());
 		return session.getDiscordFormatter().output(session.getIrcFormatter().parse(ircMessage, null), null);
 	}
@@ -178,9 +176,8 @@ public class IrcChannelBridge {
 				builder::setContent,
 				image -> {
 					try {
-						BufferedImage swingImage = SwingFXUtils.fromFXImage(image, null);
 						ByteArrayOutputStream baos = new ByteArrayOutputStream();
-						ImageIO.write(swingImage, "png", baos);
+						ImageIO.write(image, "png", baos);
 						builder.addFile("formatted-irc-message.png", baos.toByteArray());
 					} catch (IOException e) {
 						throw new UnexpectedException(e);
@@ -238,9 +235,8 @@ public class IrcChannelBridge {
 						.build()),
 				image -> {
 					try {
-						BufferedImage swingImage = SwingFXUtils.fromFXImage(image, null);
 						ByteArrayOutputStream baos = new ByteArrayOutputStream();
-						ImageIO.write(swingImage, "png", baos);
+						ImageIO.write(image, "png", baos);
 						builder.setContent("**Notice**");
 						builder.addFile("formatted-irc-message.png", baos.toByteArray());
 					} catch (IOException e) {

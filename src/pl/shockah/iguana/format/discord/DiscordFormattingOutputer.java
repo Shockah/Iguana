@@ -1,16 +1,17 @@
 package pl.shockah.iguana.format.discord;
 
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontFormatException;
+import java.awt.Graphics2D;
+import java.awt.GraphicsEnvironment;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.Nonnull;
 
-import javafx.scene.SnapshotParameters;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.image.Image;
-import javafx.scene.text.Font;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Wither;
@@ -18,9 +19,11 @@ import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.format.FormattedString;
 import pl.shockah.iguana.format.FormattingOutputer;
 import pl.shockah.iguana.format.IrcColor;
+import pl.shockah.unicorn.UnexpectedException;
 import pl.shockah.unicorn.collection.Either2;
+import pl.shockah.unicorn.func.Func0;
 
-public class DiscordFormattingOutputer implements FormattingOutputer<Void, Either2<String, Image>> {
+public class DiscordFormattingOutputer implements FormattingOutputer<Void, Either2<String, BufferedImage>> {
 	private static final int FONT_SIZE = 10;
 
 	private static final int MAX_LINE_LENGTH = 50;
@@ -31,7 +34,16 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 
 	@Nonnull
 	@Getter(lazy = true)
-	private static final Font font = Font.loadFont(DiscordFormattingOutputer.class.getResource("unifont-11.0.02.ttf").toExternalForm(), FONT_SIZE);
+	private static final Font font = ((Func0<Font>)() -> {
+		try {
+			GraphicsEnvironment environment = GraphicsEnvironment.getLocalGraphicsEnvironment();
+			Font font = Font.createFont(Font.TRUETYPE_FONT, DiscordFormattingOutputer.class.getResourceAsStream("unifont-11.0.02.ttf"));
+			environment.registerFont(font);
+			return font.deriveFont((float)FONT_SIZE);
+		} catch (FontFormatException | IOException e) {
+			throw new UnexpectedException(e);
+		}
+	}).call();
 
 	@Nonnull
 	private final Configuration.Appearance appearanceConfiguration;
@@ -47,7 +59,7 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 
 	@Nonnull
 	@Override
-	public Either2<String, Image> output(@Nonnull List<FormattedString> formattedStrings, Void context) {
+	public Either2<String, BufferedImage> output(@Nonnull List<FormattedString> formattedStrings, Void context) {
 		boolean returnImage = formattedStrings.stream()
 				.anyMatch(string -> string.textColor != IrcColor.Default || string.backgroundColor != IrcColor.Default);
 
@@ -93,7 +105,7 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 	}
 
 	@Nonnull
-	private Image outputImage(@Nonnull List<FormattedString> formattedStrings, Void context) {
+	private BufferedImage outputImage(@Nonnull List<FormattedString> formattedStrings, Void context) {
 		List<FormattedCharacter> characters = new ArrayList<>();
 		for (FormattedString string : formattedStrings) {
 			for (int i = 0; i < string.text.length(); i++) {
@@ -186,7 +198,7 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 	}
 
 	@Nonnull
-	private Image createImage(@Nonnull List<List<FormattedCharacter>> lines) {
+	private BufferedImage createImage(@Nonnull List<List<FormattedCharacter>> lines) {
 		int maxLineLength = lines.stream()
 				.mapToInt(List::size)
 				.max().orElse(0);
@@ -194,12 +206,12 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 		if (maxLineLength == 0)
 			throw new IllegalArgumentException("Empty image.");
 
-		Canvas canvas = new Canvas(CHARACTER_WIDTH * maxLineLength, CHARACTER_HEIGHT * lines.size());
-		GraphicsContext context = canvas.getGraphicsContext2D();
-		context.setFont(getFont());
+		BufferedImage image = new BufferedImage(CHARACTER_WIDTH * maxLineLength, CHARACTER_HEIGHT * lines.size(), BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setFont(getFont());
 
-		context.setFill(new javafx.scene.paint.Color(1f, 1f, 1f, 0.5f));
-		context.fill();
+		graphics.setPaint(new Color(1f, 1f, 1f, 0.5f));
+		graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
 
 		int lineIndex = 0;
 		for (List<FormattedCharacter> line : lines) {
@@ -207,16 +219,15 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 			for (FormattedCharacter character : line) {
 				if (character.backgroundColor != IrcColor.Default) {
 					Color color = appearanceConfiguration.getColor(character.backgroundColor);
-					context.setFill(new javafx.scene.paint.Color(color.getRed() / 255f, color.getGreen() / 255f, color.getBlue() / 255f, 1f));
-					context.fillRect(inLineIndex * CHARACTER_WIDTH, lineIndex * CHARACTER_HEIGHT, CHARACTER_WIDTH, CHARACTER_HEIGHT);
+					graphics.setPaint(color);
+					graphics.fillRect(inLineIndex * CHARACTER_WIDTH, lineIndex * CHARACTER_HEIGHT, CHARACTER_WIDTH, CHARACTER_HEIGHT);
 				}
 
 				Color color = Color.BLACK;
 				if (character.textColor != IrcColor.Default)
 					appearanceConfiguration.getColor(character.textColor);
-				context.setFill(new javafx.scene.paint.Color(color.getRed() / 255f, color.getGreen() / 255f, color.getBlue() / 255f, 1f));
-				context.setFill(context.getStroke());
-				context.fillText("" + character.character, inLineIndex * CHARACTER_WIDTH, lineIndex * CHARACTER_HEIGHT);
+				graphics.setPaint(color);
+				graphics.drawString("" + character.character, inLineIndex * CHARACTER_WIDTH, lineIndex * CHARACTER_HEIGHT);
 
 				inLineIndex++;
 			}
@@ -224,9 +235,7 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 			lineIndex++;
 		}
 
-		SnapshotParameters params = new SnapshotParameters();
-		params.setFill(javafx.scene.paint.Color.TRANSPARENT);
-		return canvas.snapshot(params, null);
+		return image;
 	}
 
 	@EqualsAndHashCode
