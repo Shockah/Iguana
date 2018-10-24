@@ -32,35 +32,132 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 
 	@Nonnull
 	@Getter(lazy = true)
-	private static final String fontFamilyName = ((Supplier<String>)() -> {
+	private static final FontProvider fontProvider = ((Supplier<FontProvider>)() -> {
 		try {
-			Font font = Font.createFont(Font.TRUETYPE_FONT, DiscordFormattingOutputer.class.getResourceAsStream("/unifont-11.0.02.ttf"));
-			GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font);
-			return font.getFamily();
+			List<FontProvider> providers = new ArrayList<>();
+			GraphicsEnvironment environment = GraphicsEnvironment.getLocalGraphicsEnvironment();
+
+			{
+				Font font = Font.createFont(Font.TRUETYPE_FONT, DiscordFormattingOutputer.class.getResourceAsStream("/UbuntuMono-R.ttf"));
+				environment.registerFont(font);
+				environment.registerFont(Font.createFont(Font.TRUETYPE_FONT, DiscordFormattingOutputer.class.getResourceAsStream("/UbuntuMono-B.ttf")));
+				environment.registerFont(Font.createFont(Font.TRUETYPE_FONT, DiscordFormattingOutputer.class.getResourceAsStream("/UbuntuMono-RI.ttf")));
+				environment.registerFont(Font.createFont(Font.TRUETYPE_FONT, DiscordFormattingOutputer.class.getResourceAsStream("/UbuntuMono-BI.ttf")));
+				providers.add(new BasicFontProvider(font.getFamily(), FONT_SIZE));
+			}
+
+			{
+				Font font = Font.createFont(Font.TRUETYPE_FONT, DiscordFormattingOutputer.class.getResourceAsStream("/unifont-11.0.02.ttf"));
+				environment.registerFont(font);
+				providers.add(new BasicFontProvider(font.getFamily(), FONT_SIZE));
+			}
+
+			for (String fontFamilyName : environment.getAvailableFontFamilyNames()) {
+				if (fontFamilyName.equals("Apple Color Emoji"))
+					continue;
+				providers.add(new BasicFontProvider(fontFamilyName, FONT_SIZE));
+			}
+
+			{
+				Font font = Font.createFont(Font.TRUETYPE_FONT, DiscordFormattingOutputer.class.getResourceAsStream("/NotoEmoji-Regular.ttf"));
+				environment.registerFont(font);
+				providers.add(new BasicFontProvider(font.getFamily(), FONT_SIZE));
+			}
+
+			return new AlternativeFontProvider(providers);
 		} catch (FontFormatException | IOException e) {
 			throw new UnexpectedException(e);
 		}
 	}).get();
 
-	@Nonnull
-	@Getter(lazy = true)
-	private static final Font plainFont = new Font(getFontFamilyName(), Font.PLAIN, FONT_SIZE);
+	private interface FontProvider {
+		@Nonnull
+		Font provide(boolean bold, boolean italic);
 
-	@Nonnull
-	@Getter(lazy = true)
-	private static final Font boldFont = new Font(getFontFamilyName(), Font.BOLD, FONT_SIZE);
+		@Nonnull
+		Font provide(int codepoint, boolean bold, boolean italic);
+	}
 
-	@Nonnull
-	@Getter(lazy = true)
-	private static final Font italicFont = new Font(getFontFamilyName(), Font.ITALIC, FONT_SIZE);
+	private static class BasicFontProvider implements FontProvider {
+		@Nonnull
+		public final Font plainFont;
 
-	@Nonnull
-	@Getter(lazy = true)
-	private static final Font boldItalicFont = new Font(getFontFamilyName(), Font.BOLD | Font.ITALIC, FONT_SIZE);
+		@Nonnull
+		public final Font boldFont;
+
+		@Nonnull
+		public final Font italicFont;
+
+		@Nonnull
+		public final Font boldItalicFont;
+
+		private BasicFontProvider(@Nonnull String fontFamilyName, int size) {
+			this(
+					new Font(fontFamilyName, Font.PLAIN, size),
+					new Font(fontFamilyName, Font.BOLD, size),
+					new Font(fontFamilyName, Font.ITALIC, size),
+					new Font(fontFamilyName, Font.BOLD | Font.ITALIC, size)
+			);
+		}
+
+		private BasicFontProvider(@Nonnull Font plainFont, @Nonnull Font boldFont, @Nonnull Font italicFont, @Nonnull Font boldItalicFont) {
+			this.plainFont = plainFont;
+			this.boldFont = boldFont;
+			this.italicFont = italicFont;
+			this.boldItalicFont = boldItalicFont;
+		}
+
+		@Nonnull
+		@Override
+		public Font provide(boolean bold, boolean italic) {
+			if (bold && italic)
+				return boldItalicFont;
+			else if (bold)
+				return boldFont;
+			else if (italic)
+				return italicFont;
+			else
+				return plainFont;
+		}
+
+		@Nonnull
+		@Override
+		public Font provide(int codepoint, boolean bold, boolean italic) {
+			return provide(bold, italic);
+		}
+	}
+
+	private static class AlternativeFontProvider implements FontProvider {
+		@Nonnull
+		private final List<FontProvider> providers;
+
+		private AlternativeFontProvider(@Nonnull List<FontProvider> providers) {
+			if (providers.isEmpty())
+				throw new IllegalArgumentException();
+			this.providers = new ArrayList<>(providers);
+		}
+
+		@Nonnull
+		@Override
+		public Font provide(boolean bold, boolean italic) {
+			return providers.get(0).provide(bold, italic);
+		}
+
+		@Nonnull
+		@Override
+		public Font provide(int codepoint, boolean bold, boolean italic) {
+			for (FontProvider provider : providers) {
+				Font font = provider.provide(codepoint, bold, italic);
+				if (font.canDisplay(codepoint))
+					return font;
+			}
+			return providers.get(0).provide(codepoint, bold, italic);
+		}
+	}
 
 	@Getter(lazy = true)
 	private static final int characterHeight = ((IntSupplier)() -> {
-		Font font = getPlainFont();
+		Font font = getFontProvider().provide(false, false);
 		FontRenderContext context = new FontRenderContext(font.getTransform(), true, true);
 		return (int)Math.ceil(font.getStringBounds("Wy", context).getHeight());
 	}).getAsInt();
@@ -290,16 +387,7 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 
 		@Nonnull
 		@Getter(lazy = true)
-		private final Font font = ((Supplier<Font>)() -> {
-			if (bold && italic)
-				return getBoldItalicFont();
-			else if (bold)
-				return getBoldFont();
-			else if (italic)
-				return getItalicFont();
-			else
-				return getPlainFont();
-		}).get();
+		private final Font font = getFontProvider().provide(codepoint, bold, italic);
 
 		@Getter(lazy = true)
 		private final int width = ((IntSupplier)() -> {
