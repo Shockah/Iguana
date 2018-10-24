@@ -117,7 +117,7 @@ public class IrcChannelBridge {
 			if (ALLOWED_NONALPHANUMERIC_NICKNAME_CHARACTERS.indexOf(sb.charAt(i)) != -1)
 				sb.deleteCharAt(i--);
 		}
-		for (int i = sb.length() - 1; i >= 0; i++) {
+		for (int i = sb.length() - 1; i >= 0; i--) {
 			char c = sb.charAt(i);
 			if (c >= '0' && c <= '9')
 				sb.deleteCharAt(i);
@@ -168,24 +168,29 @@ public class IrcChannelBridge {
 	}
 
 	private void onChannelMessage(@Nonnull User user, @Nonnull String message) {
-		WebhookMessageBuilder builder = new WebhookMessageBuilder()
-				.setUsername(getFullIrcNickname(user))
-				.setAvatarUrl(getAvatarUrl(user.getNick()));
+		try {
+			WebhookMessageBuilder builder = new WebhookMessageBuilder()
+					.setUsername(getFullIrcNickname(user))
+					.setAvatarUrl(getAvatarUrl(user.getNick()));
 
-		getFormattedIrcToDiscordMessage(message).apply(
-				builder::setContent,
-				image -> {
-					try {
-						ByteArrayOutputStream baos = new ByteArrayOutputStream();
-						ImageIO.write(image, "png", baos);
-						builder.addFile("formatted-irc-message.png", baos.toByteArray());
-					} catch (IOException e) {
-						throw new UnexpectedException(e);
+			getFormattedIrcToDiscordMessage(message).apply(
+					builder::setContent,
+					image -> {
+						try {
+							ByteArrayOutputStream baos = new ByteArrayOutputStream();
+							ImageIO.write(image, "png", baos);
+							builder.addFile("formatted-irc-message.png", baos.toByteArray());
+						} catch (IOException e) {
+							throw new UnexpectedException(e);
+						}
 					}
-				}
-		);
+			);
 
-		getWebhookClient().send(builder.build());
+			getWebhookClient().send(builder.build());
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw e;
+		}
 	}
 
 	public void onChannelMessage(@Nonnull MessageEvent event) {

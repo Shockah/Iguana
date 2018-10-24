@@ -5,10 +5,13 @@ import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
+import java.awt.font.FontRenderContext;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
 import javax.annotation.Nonnull;
 
@@ -21,29 +24,46 @@ import pl.shockah.iguana.format.FormattingOutputer;
 import pl.shockah.iguana.format.IrcColor;
 import pl.shockah.unicorn.UnexpectedException;
 import pl.shockah.unicorn.collection.Either2;
-import pl.shockah.unicorn.func.Func0;
 
 public class DiscordFormattingOutputer implements FormattingOutputer<Void, Either2<String, BufferedImage>> {
-	private static final int FONT_SIZE = 10;
+	private static final int FONT_SIZE = 14;
 
-	private static final int MAX_LINE_LENGTH = 50;
-
-	private static final int CHARACTER_WIDTH = 10;
-
-	private static final int CHARACTER_HEIGHT = 12;
+	private static final int MAX_LINE_LENGTH = 100;
 
 	@Nonnull
 	@Getter(lazy = true)
-	private static final Font font = ((Func0<Font>)() -> {
+	private static final String fontFamilyName = ((Supplier<String>)() -> {
 		try {
-			GraphicsEnvironment environment = GraphicsEnvironment.getLocalGraphicsEnvironment();
-			Font font = Font.createFont(Font.TRUETYPE_FONT, DiscordFormattingOutputer.class.getResourceAsStream("unifont-11.0.02.ttf"));
-			environment.registerFont(font);
-			return font.deriveFont((float)FONT_SIZE);
+			Font font = Font.createFont(Font.TRUETYPE_FONT, DiscordFormattingOutputer.class.getResourceAsStream("/unifont-11.0.02.ttf"));
+			GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font);
+			return font.getFamily();
 		} catch (FontFormatException | IOException e) {
 			throw new UnexpectedException(e);
 		}
-	}).call();
+	}).get();
+
+	@Nonnull
+	@Getter(lazy = true)
+	private static final Font plainFont = new Font(getFontFamilyName(), Font.PLAIN, FONT_SIZE);
+
+	@Nonnull
+	@Getter(lazy = true)
+	private static final Font boldFont = new Font(getFontFamilyName(), Font.BOLD, FONT_SIZE);
+
+	@Nonnull
+	@Getter(lazy = true)
+	private static final Font italicFont = new Font(getFontFamilyName(), Font.ITALIC, FONT_SIZE);
+
+	@Nonnull
+	@Getter(lazy = true)
+	private static final Font boldItalicFont = new Font(getFontFamilyName(), Font.BOLD | Font.ITALIC, FONT_SIZE);
+
+	@Getter(lazy = true)
+	private static final int characterHeight = ((IntSupplier)() -> {
+		Font font = getPlainFont();
+		FontRenderContext context = new FontRenderContext(font.getTransform(), true, true);
+		return (int)Math.ceil(font.getStringBounds("Wy", context).getHeight());
+	}).getAsInt();
 
 	@Nonnull
 	private final Configuration.Appearance appearanceConfiguration;
@@ -108,9 +128,10 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 	private BufferedImage outputImage(@Nonnull List<FormattedString> formattedStrings, Void context) {
 		List<FormattedCharacter> characters = new ArrayList<>();
 		for (FormattedString string : formattedStrings) {
-			for (int i = 0; i < string.text.length(); i++) {
+			for (int offset = 0; offset < string.text.length(); ) {
+				int codepoint = string.text.codePointAt(offset);
 				characters.add(new FormattedCharacter(
-						string.text.charAt(i),
+						codepoint,
 						string.bold,
 						string.italic,
 						string.underline,
@@ -118,6 +139,7 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 						string.textColor,
 						string.backgroundColor
 				));
+				offset += Character.charCount(codepoint);
 			}
 		}
 
@@ -125,10 +147,10 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 		List<FormattedCharacter> current = new ArrayList<>();
 		Boolean whitespace = null;
 		for (FormattedCharacter character : characters) {
-			if (character.character == '\r')
+			if (character.codepoint == (int)'\r')
 				continue;
 
-			if (character.character == '\n') {
+			if (character.codepoint == (int)'\n') {
 				if (!current.isEmpty()) {
 					wordsOrWhitespaces.add(current);
 					current = new ArrayList<>();
@@ -140,8 +162,8 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 			}
 
 			if (whitespace == null)
-				whitespace = Character.isWhitespace(character.character);
-			if (!current.isEmpty() && whitespace != Character.isWhitespace(character.character)) {
+				whitespace = Character.isWhitespace(character.codepoint);
+			if (!current.isEmpty() && whitespace != Character.isWhitespace(character.codepoint)) {
 				wordsOrWhitespaces.add(current);
 				current = new ArrayList<>();
 				whitespace = !whitespace;
@@ -164,17 +186,18 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 		for (List<FormattedCharacter> wordOrWhitespace : wordsOrWhitespaces) {
 			if (wordOrWhitespace.isEmpty())
 				continue;
-			if (wordOrWhitespace.get(0).character == '\n') {
+			if (wordOrWhitespace.get(0).codepoint == (int)'\n') {
 				lines.add(current);
 				current = new ArrayList<>();
 				continue;
 			}
 
-			if (Character.isWhitespace(wordOrWhitespace.get(0).character)) {
+			if (Character.isWhitespace(wordOrWhitespace.get(0).codepoint)) {
 				lastWhitespaceGroup.addAll(wordOrWhitespace);
 			} else {
 				if (current.isEmpty()) {
-					current.addAll(lastWhitespaceGroup);
+					if (lastWhitespaceGroup.size() > 1)
+						current.addAll(lastWhitespaceGroup);
 					lastWhitespaceGroup = new ArrayList<>();
 				}
 
@@ -186,6 +209,7 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 
 				current.addAll(lastWhitespaceGroup);
 				current.addAll(wordOrWhitespace);
+				lastWhitespaceGroup = new ArrayList<>();
 			}
 		}
 
@@ -199,39 +223,39 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 
 	@Nonnull
 	private BufferedImage createImage(@Nonnull List<List<FormattedCharacter>> lines) {
-		int maxLineLength = lines.stream()
-				.mapToInt(List::size)
-				.max().orElse(0);
+		int totalWidth = lines.stream()
+				.mapToInt(characters -> characters.stream()
+						.mapToInt(FormattedCharacter::getWidth)
+						.sum())
+				.max()
+				.orElseThrow(() -> new IllegalArgumentException("Empty image."));
+		int characterHeight = getCharacterHeight();
 
-		if (maxLineLength == 0)
-			throw new IllegalArgumentException("Empty image.");
-
-		BufferedImage image = new BufferedImage(CHARACTER_WIDTH * maxLineLength, CHARACTER_HEIGHT * lines.size(), BufferedImage.TYPE_INT_ARGB);
+		BufferedImage image = new BufferedImage(totalWidth, characterHeight * lines.size(), BufferedImage.TYPE_INT_ARGB);
 		Graphics2D graphics = image.createGraphics();
-		graphics.setFont(getFont());
 
-		graphics.setPaint(new Color(1f, 1f, 1f, 0.5f));
+		graphics.setColor(Color.WHITE);
 		graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
 
 		int lineIndex = 0;
 		for (List<FormattedCharacter> line : lines) {
-			int inLineIndex = 0;
+			int x = 0;
 			for (FormattedCharacter character : line) {
 				if (character.backgroundColor != IrcColor.Default) {
 					Color color = appearanceConfiguration.getColor(character.backgroundColor);
-					graphics.setPaint(color);
-					graphics.fillRect(inLineIndex * CHARACTER_WIDTH, lineIndex * CHARACTER_HEIGHT, CHARACTER_WIDTH, CHARACTER_HEIGHT);
+					graphics.setColor(color);
+					graphics.fillRect(x, lineIndex * characterHeight, character.getWidth(), characterHeight);
 				}
 
 				Color color = Color.BLACK;
 				if (character.textColor != IrcColor.Default)
-					appearanceConfiguration.getColor(character.textColor);
-				graphics.setPaint(color);
-				graphics.drawString("" + character.character, inLineIndex * CHARACTER_WIDTH, lineIndex * CHARACTER_HEIGHT);
+					color = appearanceConfiguration.getColor(character.textColor);
+				graphics.setColor(color);
+				graphics.setFont(character.getFont());
+				graphics.drawString(character.getString(), x, (lineIndex + 1) * characterHeight - 2);
 
-				inLineIndex++;
+				x += character.getWidth();
 			}
-
 			lineIndex++;
 		}
 
@@ -240,7 +264,7 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 
 	@EqualsAndHashCode
 	private static class FormattedCharacter {
-		final char character;
+		final int codepoint;
 
 		@Wither
 		final boolean bold;
@@ -260,12 +284,32 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 		@Nonnull
 		public final IrcColor backgroundColor;
 
-		private FormattedCharacter(char character) {
-			this(character, false, false, false, false, IrcColor.Default, IrcColor.Default);
-		}
+		@Nonnull
+		@Getter(lazy = true)
+		private final String string = new String(Character.toChars(codepoint));
 
-		private FormattedCharacter(char character, boolean bold, boolean italic, boolean underline, boolean strikethrough, @Nonnull IrcColor textColor, @Nonnull IrcColor backgroundColor) {
-			this.character = character;
+		@Nonnull
+		@Getter(lazy = true)
+		private final Font font = ((Supplier<Font>)() -> {
+			if (bold && italic)
+				return getBoldItalicFont();
+			else if (bold)
+				return getBoldFont();
+			else if (italic)
+				return getItalicFont();
+			else
+				return getPlainFont();
+		}).get();
+
+		@Getter(lazy = true)
+		private final int width = ((IntSupplier)() -> {
+			Font font = getFont();
+			FontRenderContext context = new FontRenderContext(font.getTransform(), true, true);
+			return (int)Math.ceil(font.getStringBounds(getString(), context).getWidth());
+		}).getAsInt();
+
+		private FormattedCharacter(int codepoint, boolean bold, boolean italic, boolean underline, boolean strikethrough, @Nonnull IrcColor textColor, @Nonnull IrcColor backgroundColor) {
+			this.codepoint = codepoint;
 			this.bold = bold;
 			this.italic = italic;
 			this.underline = underline;

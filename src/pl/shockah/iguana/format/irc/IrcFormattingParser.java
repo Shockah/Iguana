@@ -87,7 +87,7 @@ public class IrcFormattingParser implements FormattingParser<Void> {
 
 			Matcher colorMatcher = colorPrefixPattern.matcher(sb);
 			if (colorMatcher.find()) {
-				if ((colorMatcher.groupCount() == 3 && colorMatcher.group(3).length() == 2) || colorMatcher.end() != sb.length()) {
+				if ((colorMatcher.groupCount() == 3 && colorMatcher.group(3) != null && colorMatcher.group(3).length() == 2) || colorMatcher.end() != sb.length()) {
 					String textColorCode = null;
 					String backgroundColorCode = null;
 
