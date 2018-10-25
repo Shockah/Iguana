@@ -28,7 +28,15 @@ import pl.shockah.unicorn.collection.Either2;
 public class DiscordFormattingOutputer implements FormattingOutputer<Void, Either2<String, BufferedImage>> {
 	private static final int FONT_SIZE = 14;
 
-	private static final int MAX_LINE_LENGTH = 100;
+	private static final int OFFSET_X = 0;
+
+	private static final int OFFSET_Y = -3;
+
+	private static final int PADDING_X = 2;
+
+	private static final int PADDING_Y = 2;
+
+	private static final int MAX_LINE_LENGTH = 80;
 
 	@Nonnull
 	@Getter(lazy = true)
@@ -280,38 +288,34 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 
 		List<FormattedCharacter> current = new ArrayList<>();
 		List<FormattedCharacter> lastWhitespaceGroup = new ArrayList<>();
+		boolean wasNewline = false;
 		for (List<FormattedCharacter> wordOrWhitespace : wordsOrWhitespaces) {
 			if (wordOrWhitespace.isEmpty())
 				continue;
 			if (wordOrWhitespace.get(0).codepoint == (int)'\n') {
 				lines.add(current);
 				current = new ArrayList<>();
+				wasNewline = true;
 				continue;
 			}
 
 			if (Character.isWhitespace(wordOrWhitespace.get(0).codepoint)) {
 				lastWhitespaceGroup.addAll(wordOrWhitespace);
 			} else {
-				if (current.isEmpty()) {
-					if (lastWhitespaceGroup.size() > 1)
-						current.addAll(lastWhitespaceGroup);
-					lastWhitespaceGroup = new ArrayList<>();
-				}
-
 				int newLength = current.size() + lastWhitespaceGroup.size() + wordOrWhitespace.size();
 				if (newLength > MAX_LINE_LENGTH) {
 					lines.add(current);
 					current = new ArrayList<>();
 				}
 
-				current.addAll(lastWhitespaceGroup);
+				if (wasNewline || !current.isEmpty())
+					current.addAll(lastWhitespaceGroup);
+				wasNewline = false;
 				current.addAll(wordOrWhitespace);
 				lastWhitespaceGroup = new ArrayList<>();
 			}
 		}
 
-		if (!lastWhitespaceGroup.isEmpty())
-			current.addAll(lastWhitespaceGroup);
 		if (!current.isEmpty())
 			lines.add(current);
 
@@ -328,10 +332,10 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 				.orElseThrow(() -> new IllegalArgumentException("Empty image."));
 		int characterHeight = getCharacterHeight();
 
-		BufferedImage image = new BufferedImage(totalWidth, characterHeight * lines.size(), BufferedImage.TYPE_INT_ARGB);
+		BufferedImage image = new BufferedImage(totalWidth + PADDING_X * 2, characterHeight * lines.size() + PADDING_Y * 2, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D graphics = image.createGraphics();
 
-		graphics.setColor(Color.WHITE);
+		graphics.setColor(appearanceConfiguration.getIrcDefaultBackgroundColor());
 		graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
 
 		int lineIndex = 0;
@@ -341,15 +345,15 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 				if (character.backgroundColor != IrcColor.Default) {
 					Color color = appearanceConfiguration.getColor(character.backgroundColor);
 					graphics.setColor(color);
-					graphics.fillRect(x, lineIndex * characterHeight, character.getWidth(), characterHeight);
+					graphics.fillRect(x + PADDING_X, lineIndex * characterHeight + PADDING_Y, character.getWidth(), characterHeight);
 				}
 
-				Color color = Color.BLACK;
+				Color color = appearanceConfiguration.getIrcDefaultTextColor();
 				if (character.textColor != IrcColor.Default)
 					color = appearanceConfiguration.getColor(character.textColor);
 				graphics.setColor(color);
 				graphics.setFont(character.getFont());
-				graphics.drawString(character.getString(), x, (lineIndex + 1) * characterHeight - 2);
+				graphics.drawString(character.getString(), x + PADDING_X + OFFSET_X, (lineIndex + 1) * characterHeight + PADDING_Y + OFFSET_Y);
 
 				x += character.getWidth();
 			}

@@ -64,6 +64,16 @@ public final class Configuration {
 		});
 		json.onObject("appearance", jAppearance -> {
 			jAppearance.onString("avatarUrlFormat", config.appearance::setAvatarUrlFormat);
+			jAppearance.onList("defaultIrcBackgroundColor", jRawRgb -> {
+				JSONList<Integer> jRgb = jRawRgb.ofInts();
+				//noinspection ConstantConditions
+				config.appearance.setIrcDefaultBackgroundColor(new Color(jRgb.get(0), jRgb.get(1), jRgb.get(2)));
+			});
+			jAppearance.onList("defaultIrcTextColor", jRawRgb -> {
+				JSONList<Integer> jRgb = jRawRgb.ofInts();
+				//noinspection ConstantConditions
+				config.appearance.setIrcDefaultTextColor(new Color(jRgb.get(0), jRgb.get(1), jRgb.get(2)));
+			});
 			jAppearance.onObject("ircColors", jIrcColors -> {
 				for (String jIrcColorKey : jIrcColors.keySet()) {
 					try {
@@ -116,11 +126,25 @@ public final class Configuration {
 				),
 				"appearance", JSONObject.of(
 						"avatarUrlFormat", appearance.avatarUrlFormat,
+						"defaultIrcBackgroundColor", JSONList.of(
+								appearance.ircDefaultBackgroundColor.getRed(),
+								appearance.ircDefaultBackgroundColor.getGreen(),
+								appearance.ircDefaultBackgroundColor.getBlue()
+						),
+						"defaultIrcTextColor", JSONList.of(
+								appearance.ircDefaultTextColor.getRed(),
+								appearance.ircDefaultTextColor.getGreen(),
+								appearance.ircDefaultTextColor.getBlue()
+						),
 						"ircColors", new JSONObject(
 								appearance.ircColors.entrySet().stream()
 										.collect(Collectors.toMap(
 												entry -> entry.getKey().name(),
-												entry -> JSONList.of(entry.getValue().getRed(), entry.getValue().getGreen(), entry.getValue().getBlue())
+												entry -> JSONList.of(
+														entry.getValue().getRed(),
+														entry.getValue().getGreen(),
+														entry.getValue().getBlue()
+												)
 										))
 						)
 				)
@@ -234,6 +258,10 @@ public final class Configuration {
 	@Setter
 	public static final class Appearance {
 		private String avatarUrlFormat;
+
+		private Color ircDefaultBackgroundColor = Color.WHITE;
+
+		private Color ircDefaultTextColor = Color.BLACK;
 
 		private final Map<IrcColor, Color> ircColors = new TreeMap<>();
 
