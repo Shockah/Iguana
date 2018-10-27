@@ -4,6 +4,7 @@ import net.dv8tion.jda.core.entities.Category;
 import net.dv8tion.jda.core.entities.TextChannel;
 
 import org.pircbotx.Channel;
+import org.pircbotx.InputParser;
 import org.pircbotx.PircBotX;
 import org.pircbotx.exception.IrcException;
 import org.pircbotx.hooks.ListenerAdapter;
@@ -28,6 +29,8 @@ import javax.annotation.Nullable;
 import lombok.Getter;
 import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.IguanaSession;
+import pl.shockah.iguana.irc.IrcInputParser;
+import pl.shockah.iguana.irc.IrcListenerAdapter;
 import pl.shockah.util.ReadWriteMap;
 
 public class IrcServerBridge {
@@ -74,7 +77,13 @@ public class IrcServerBridge {
 				.setName(ircServerConfig.getNickname())
 				.setAutoNickChange(true)
 				.setAutoReconnect(true)
-				.setListenerManager(listenerManager);
+				.setListenerManager(listenerManager)
+				.setBotFactory(new org.pircbotx.Configuration.BotFactory() {
+					@Override
+					public InputParser createInputParser(PircBotX bot) {
+						return new IrcInputParser(bot);
+					}
+				});
 
 		for (Configuration.IRC.Server.Channel ircChannel : ircServerConfig.getChannels()) {
 			if (ircChannel.getPassword() == null)
@@ -129,7 +138,7 @@ public class IrcServerBridge {
 		});
 	}
 
-	private class IrcListener extends ListenerAdapter {
+	private class IrcListener extends IrcListenerAdapter {
 		@Override
 		public void onMessage(MessageEvent event) throws Exception {
 			super.onMessage(event);
