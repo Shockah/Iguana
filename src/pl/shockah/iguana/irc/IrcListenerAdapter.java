@@ -11,8 +11,6 @@ public class IrcListenerAdapter extends ListenerAdapter {
 			onExtendedJoin((ExtendedJoinEvent)event);
 		else if (event instanceof AccountNotifyEvent)
 			onAccountNotify((AccountNotifyEvent)event);
-		else if (event instanceof Whois2Event)
-			onWhois2((Whois2Event)event);
 
 		if (event instanceof NoticeEvent) {
 			NoticeEvent e = (NoticeEvent)event;
@@ -28,8 +26,6 @@ public class IrcListenerAdapter extends ListenerAdapter {
 	public void onExtendedJoin(ExtendedJoinEvent event) { }
 
 	public void onAccountNotify(AccountNotifyEvent event) { }
-
-	public void onWhois2(Whois2Event event) { }
 
 	public void onServerNotice(ServerNoticeEvent event) { }
 }

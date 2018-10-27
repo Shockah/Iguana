@@ -7,19 +7,25 @@ import org.pircbotx.UserHostmask;
 import org.pircbotx.hooks.Event;
 import org.pircbotx.hooks.types.GenericChannelUserEvent;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import lombok.Getter;
 
 public class ExtendedJoinEvent extends Event implements GenericChannelUserEvent {
+	@Nonnull
 	@Getter
 	protected final Channel channel;
 
+	@Nonnull
 	@Getter
 	protected final User user;
 
+	@Nullable
 	@Getter
 	protected final String account;
 
-	public ExtendedJoinEvent(PircBotX bot, Channel channel, User user, String account) {
+	public ExtendedJoinEvent(@Nonnull PircBotX bot, @Nonnull Channel channel, @Nonnull User user, @Nullable String account) {
 		super(bot);
 		this.channel = channel;
 		this.user = user;

@@ -6,6 +6,8 @@ import net.dv8tion.jda.core.entities.TextChannel;
 import org.pircbotx.Channel;
 import org.pircbotx.InputParser;
 import org.pircbotx.PircBotX;
+import org.pircbotx.User;
+import org.pircbotx.cap.EnableCapHandler;
 import org.pircbotx.exception.IrcException;
 import org.pircbotx.hooks.ListenerAdapter;
 import org.pircbotx.hooks.events.ActionEvent;
@@ -26,11 +28,15 @@ import java.util.Map;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.IguanaSession;
+import pl.shockah.iguana.irc.AccountNotifyEvent;
+import pl.shockah.iguana.irc.ExtendedJoinEvent;
 import pl.shockah.iguana.irc.IrcInputParser;
 import pl.shockah.iguana.irc.IrcListenerAdapter;
+import pl.shockah.iguana.irc.NickServIdentityManager;
 import pl.shockah.util.ReadWriteMap;
 
 public class IrcServerBridge {
@@ -61,7 +67,11 @@ public class IrcServerBridge {
 	@Getter(lazy = true)
 	private final ListenerAdapter ircListener = new IrcListener();
 
-	private volatile boolean running = false;
+	@Getter(value = AccessLevel.PRIVATE, lazy = true)
+	private final boolean availableWhoX = ircBot.getServerInfo().isWhoX();
+
+	@Nonnull
+	private final NickServIdentityManager nickServIdentityManager = new NickServIdentityManager();
 
 	public IrcServerBridge(@Nonnull IguanaSession session, @Nonnull Configuration.IRC.Server ircServerConfig) {
 		this.session = session;
@@ -78,6 +88,8 @@ public class IrcServerBridge {
 				.setAutoNickChange(true)
 				.setAutoReconnect(true)
 				.setListenerManager(listenerManager)
+				.addCapHandler(new EnableCapHandler("extended-join", true))
+				.addCapHandler(new EnableCapHandler("account-notify", true))
 				.setBotFactory(new org.pircbotx.Configuration.BotFactory() {
 					@Override
 					public InputParser createInputParser(PircBotX bot) {
@@ -176,18 +188,26 @@ public class IrcServerBridge {
 		public void onJoin(JoinEvent event) throws Exception {
 			super.onJoin(event);
 
-			if (event.getBot().getUserBot().equals(event.getUser()))
+			if (event.getBot().getUserBot().equals(event.getUser())) {
+				if (isAvailableWhoX())
+					event.getBot().sendRaw().rawLine(String.format("WHO %s %%na", event.getChannel().getName()));
 				getChannelBridge(event.getChannel()).onSelfJoin(event);
-			else
+			} else {
 				getChannelBridge(event.getChannel()).onJoin(event);
+			}
 		}
 
 		@Override
 		public void onPart(PartEvent event) throws Exception {
 			super.onPart(event);
 
-			if (event.getBot().getUserBot().equals(event.getUser()))
+			User user = event.getUser();
+
+			if (event.getBot().getUserBot().equals(user))
 				return;
+
+			if (user.getChannels().isEmpty() || (user.getChannels().size() == 1 && user.getChannels().first().equals(event.getChannel())))
+				nickServIdentityManager.updateAccount(user, null);
 
 			getChannelBridge(event.getChannel()).onPart(event);
 		}
@@ -198,6 +218,8 @@ public class IrcServerBridge {
 
 			if (event.getBot().getUserBot().equals(event.getUser()))
 				return;
+
+			nickServIdentityManager.updateAccount(event.getUser(), null);
 
 			UserChannelDaoSnapshot dao = event.getUserChannelDaoSnapshot();
 			if (dao == null)
@@ -217,6 +239,9 @@ public class IrcServerBridge {
 			if (event.getBot().getUserBot().equals(event.getUser()))
 				return;
 
+			nickServIdentityManager.updateAccount(event.getNewNick(), nickServIdentityManager.getAccountForUser(event.getOldNick()));
+			nickServIdentityManager.updateAccount(event.getOldNick(), null);
+
 			channels.iterateValues(bridge -> {
 				if (bridge.getIrcChannel().getUsers().contains(event.getUser()))
 					bridge.onNickChange(event);
@@ -232,6 +257,18 @@ public class IrcServerBridge {
 				return;
 
 			getChannelBridge(channel).onTopic(event);
+		}
+
+		@Override
+		public void onExtendedJoin(ExtendedJoinEvent event) {
+			super.onExtendedJoin(event);
+			nickServIdentityManager.updateAccount(event.getUser(), event.getAccount());
+		}
+
+		@Override
+		public void onAccountNotify(AccountNotifyEvent event) {
+			super.onAccountNotify(event);
+			nickServIdentityManager.updateAccount(event.getUser(), event.getAccount());
 		}
 	}
 }

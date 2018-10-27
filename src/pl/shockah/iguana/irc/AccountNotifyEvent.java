@@ -1,27 +1,27 @@
 package pl.shockah.iguana.irc;
 
-import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import org.pircbotx.UserHostmask;
 import org.pircbotx.hooks.Event;
-import org.pircbotx.hooks.types.GenericChannelUserEvent;
+import org.pircbotx.hooks.types.GenericUserEvent;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import lombok.Getter;
 
-public class AccountNotifyEvent extends Event implements GenericChannelUserEvent {
-	@Getter
-	protected final Channel channel;
-
+public class AccountNotifyEvent extends Event implements GenericUserEvent {
+	@Nonnull
 	@Getter
 	protected final User user;
 
+	@Nullable
 	@Getter
 	protected final String account;
 
-	public AccountNotifyEvent(PircBotX bot, Channel channel, User user, String account) {
+	public AccountNotifyEvent(@Nonnull PircBotX bot, @Nonnull User user, @Nullable String account) {
 		super(bot);
-		this.channel = channel;
 		this.user = user;
 		this.account = account;
 	}
@@ -31,6 +31,6 @@ public class AccountNotifyEvent extends Event implements GenericChannelUserEvent
 	}
 
 	public void respond(String response) {
-		getChannel().send().message(getUser(), response);
+		throw new UnsupportedOperationException();
 	}
 }
