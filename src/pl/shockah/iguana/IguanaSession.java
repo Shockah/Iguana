@@ -75,7 +75,7 @@ public class IguanaSession {
 						saveConfiguration();
 					}).start();
 				}
-			}).addEventListener(bridge).setToken(configuration.discord.getToken()).build();
+			}).addEventListener(bridge).setEnableShutdownHook(false).setToken(configuration.discord.getToken()).build();
 		} catch (LoginException e) {
 			throw new Exception(e);
 		}

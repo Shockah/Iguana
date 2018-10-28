@@ -70,6 +70,18 @@ public class IrcServerBridge {
 	@Getter(lazy = true)
 	private final ListenerAdapter ircListener = new IrcListener();
 
+	@Nonnull
+	@Getter
+	private final Thread ircThread = new Thread(() -> {
+		try {
+			if (ircBot == null)
+				throw new IllegalStateException();
+			ircBot.startBot();
+		} catch (IOException | IrcException e) {
+			throw new RuntimeException(e);
+		}
+	});
+
 	@Getter(value = AccessLevel.PRIVATE, lazy = true)
 	private final boolean availableWhoX = ircBot.getServerInfo().isWhoX();
 
@@ -119,13 +131,7 @@ public class IrcServerBridge {
 			channels.put(ircChannelConfig, new IrcChannelBridge(this, ircChannelConfig));
 		}
 
-		new Thread(() -> {
-			try {
-				ircBot.startBot();
-			} catch (IOException | IrcException e) {
-				throw new RuntimeException(e);
-			}
-		}).start();
+		ircThread.start();
 	}
 
 	public synchronized void stop() {
@@ -171,7 +177,7 @@ public class IrcServerBridge {
 			getDiscordManagementChannel().sendMessage(new EmbedBuilder()
 					.setColor(session.getConfiguration().appearance.events.getDisconnectedColor())
 					.setDescription(String.format("Disconnected from `%s`.", ircServerConfig.getHost()))
-					.build()).complete();
+					.build()).queue();
 		}
 
 		@Override

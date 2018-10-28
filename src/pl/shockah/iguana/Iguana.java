@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import javax.annotation.Nonnull;
 
 import lombok.Getter;
+import pl.shockah.iguana.bridge.IrcServerBridge;
 import pl.shockah.jay.JSONObject;
 import pl.shockah.jay.JSONParser;
 import pl.shockah.jay.JSONPrettyPrinter;
@@ -29,6 +30,17 @@ public class Iguana {
 	}
 
 	public void start(@Nonnull Configuration config) throws IguanaSession.Exception {
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			session.getBridge().getServers().iterateValues(IrcServerBridge::stop);
+			session.getBridge().getServers().iterateValues(ircServerBridge -> {
+				try {
+					ircServerBridge.getIrcThread().join();
+					Thread.sleep(100);
+				} catch (InterruptedException ignored) {
+				}
+			});
+			session.getDiscord().shutdown();
+		}));
 		session = new IguanaSession(this, config);
 	}
 
