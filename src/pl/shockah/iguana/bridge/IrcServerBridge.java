@@ -25,6 +25,7 @@ import org.pircbotx.hooks.managers.ThreadedListenerManager;
 import org.pircbotx.snapshot.UserChannelDaoSnapshot;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -167,6 +168,7 @@ public class IrcServerBridge {
 			getDiscordManagementChannel().sendMessage(new EmbedBuilder()
 					.setColor(session.getConfiguration().appearance.events.getConnectedColor())
 					.setDescription(String.format("Connected to `%s`.", ircServerConfig.getHost()))
+					.setTimestamp(Instant.now())
 					.build()).queue();
 		}
 
@@ -177,6 +179,7 @@ public class IrcServerBridge {
 			getDiscordManagementChannel().sendMessage(new EmbedBuilder()
 					.setColor(session.getConfiguration().appearance.events.getDisconnectedColor())
 					.setDescription(String.format("Disconnected from `%s`.", ircServerConfig.getHost()))
+					.setTimestamp(Instant.now())
 					.build()).queue();
 		}
 
