@@ -20,6 +20,7 @@ import org.pircbotx.hooks.events.NickChangeEvent;
 import org.pircbotx.hooks.events.NoticeEvent;
 import org.pircbotx.hooks.events.PartEvent;
 import org.pircbotx.hooks.events.QuitEvent;
+import org.pircbotx.hooks.events.ServerResponseEvent;
 import org.pircbotx.hooks.events.TopicEvent;
 import org.pircbotx.hooks.managers.ThreadedListenerManager;
 import org.pircbotx.snapshot.UserChannelDaoSnapshot;
@@ -27,6 +28,7 @@ import org.pircbotx.snapshot.UserChannelDaoSnapshot;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Nonnull;
@@ -301,6 +303,17 @@ public class IrcServerBridge {
 		public void onAccountNotify(AccountNotifyEvent event) {
 			super.onAccountNotify(event);
 			nickServIdentityManager.updateAccount(event.getUser(), event.getAccount());
+		}
+
+		@Override
+		public void onServerResponse(ServerResponseEvent event) throws Exception {
+			super.onServerResponse(event);
+			if (event.getCode() != 354)
+				return;
+
+			List<String> response = event.getParsedResponse();
+			if (response.size() == 3)
+				nickServIdentityManager.updateAccount(response.get(1), response.get(2));
 		}
 	}
 }
