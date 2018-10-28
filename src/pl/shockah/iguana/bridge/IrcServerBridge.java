@@ -77,9 +77,7 @@ public class IrcServerBridge {
 	@Getter
 	private final Thread ircThread = new Thread(() -> {
 		try {
-			if (ircBot == null)
-				throw new IllegalStateException();
-			ircBot.startBot();
+			getIrcBot().startBot();
 		} catch (IOException | IrcException e) {
 			throw new RuntimeException(e);
 		}
