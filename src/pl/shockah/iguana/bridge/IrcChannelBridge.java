@@ -83,15 +83,6 @@ public class IrcChannelBridge {
 	private final WebhookClientWrapper webhookClient = new WebhookClientWrapper(ircChannelConfig.getWebhook(session.getDiscord()).newClient().build());
 
 	@Nonnull
-	public static final Color defaultJoinColor = new Color(30, 200, 30);
-
-	@Nonnull
-	public static final Color defaultLeaveColor = new Color(200, 30, 30);
-
-	@Nonnull
-	public static final Color defaultNickChangeColor = new Color(140, 163, 255);
-
-	@Nonnull
 	public static final Color defaultOtherActionColor = new Color(127, 127, 127);
 
 	public IrcChannelBridge(@Nonnull IrcServerBridge serverBridge, @Nonnull Configuration.IRC.Server.Channel ircChannelConfig) {
@@ -269,7 +260,7 @@ public class IrcChannelBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(defaultJoinColor)
+						.setColor(session.getConfiguration().appearance.userInfo.getJoinColor())
 						.setDescription(String.format("**%s** (`%s!%s@%s`) joined.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
 						.setTimestamp(Instant.now())
 						.build()
@@ -283,7 +274,7 @@ public class IrcChannelBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(defaultLeaveColor)
+						.setColor(session.getConfiguration().appearance.userInfo.getLeaveColor())
 						.setDescription(String.format("**%s** (`%s!%s@%s`) left.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
 						.setTimestamp(Instant.now())
 						.build()
@@ -297,7 +288,7 @@ public class IrcChannelBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(defaultLeaveColor)
+						.setColor(session.getConfiguration().appearance.userInfo.getLeaveColor())
 						.setDescription(String.format("**%s** (`%s!%s@%s`) has quit.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
 						.setTimestamp(Instant.now())
 						.build()
@@ -311,7 +302,7 @@ public class IrcChannelBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(defaultNickChangeColor)
+						.setColor(session.getConfiguration().appearance.userInfo.getNickChangeColor())
 						.setDescription(String.format("**%s** (`%s!%s@%s`) is now known as **%s**.", event.getOldNick(), user.getNick(), user.getLogin(), user.getHostname(), event.getNewNick()))
 						.setTimestamp(Instant.now())
 						.build()

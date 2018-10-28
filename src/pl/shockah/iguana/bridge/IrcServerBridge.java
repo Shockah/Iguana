@@ -1,5 +1,6 @@
 package pl.shockah.iguana.bridge;
 
+import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Category;
 import net.dv8tion.jda.core.entities.TextChannel;
 
@@ -11,6 +12,8 @@ import org.pircbotx.cap.EnableCapHandler;
 import org.pircbotx.exception.IrcException;
 import org.pircbotx.hooks.ListenerAdapter;
 import org.pircbotx.hooks.events.ActionEvent;
+import org.pircbotx.hooks.events.ConnectEvent;
+import org.pircbotx.hooks.events.DisconnectEvent;
 import org.pircbotx.hooks.events.JoinEvent;
 import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.hooks.events.NickChangeEvent;
@@ -151,6 +154,26 @@ public class IrcServerBridge {
 	}
 
 	private class IrcListener extends IrcListenerAdapter {
+		@Override
+		public void onConnect(ConnectEvent event) throws Exception {
+			super.onConnect(event);
+
+			getDiscordManagementChannel().sendMessage(new EmbedBuilder()
+					.setColor(session.getConfiguration().appearance.events.getConnectedColor())
+					.setDescription(String.format("Connected to `%s`.", ircServerConfig.getHost()))
+					.build()).queue();
+		}
+
+		@Override
+		public void onDisconnect(DisconnectEvent event) throws Exception {
+			super.onDisconnect(event);
+
+			getDiscordManagementChannel().sendMessage(new EmbedBuilder()
+					.setColor(session.getConfiguration().appearance.events.getDisconnectedColor())
+					.setDescription(String.format("Disconnected from `%s`.", ircServerConfig.getHost()))
+					.build()).complete();
+		}
+
 		@Override
 		public void onMessage(MessageEvent event) throws Exception {
 			super.onMessage(event);

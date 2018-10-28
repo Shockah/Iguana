@@ -29,6 +29,40 @@ import pl.shockah.unicorn.color.RGBColorSpace;
 
 public final class Configuration {
 	@Nonnull
+	private static Color readColor(@Nonnull JSONList<Number> jRgb) {
+		if (jRgb.size() < 3 || jRgb.size() > 4)
+			throw new IllegalArgumentException();
+
+		if (jRgb.isInteger(0)) {
+			int r = jRgb.getInt(0);
+			int g = jRgb.getInt(1);
+			int b = jRgb.getInt(2);
+			int a = jRgb.size() == 4 ? jRgb.getInt(3) : 255;
+			return new Color(r, g, b, a);
+		} else if (jRgb.isDecimal(0)) {
+			float r = jRgb.getFloat(0);
+			float g = jRgb.getFloat(1);
+			float b = jRgb.getFloat(2);
+			float a = jRgb.size() == 4 ? jRgb.getFloat(3) : 1f;
+			return new Color(r, g, b, a);
+		}
+
+		throw new IllegalArgumentException();
+	}
+
+	@Nonnull
+	private static JSONList<? extends Number> writeColor(@Nonnull Color color) {
+		JSONList<Number> result = new JSONList<>();
+		result.add(color.getRed());
+		result.add(color.getGreen());
+		result.add(color.getBlue());
+		if (color.getAlpha() < 255)
+			result.add(color.getAlpha());
+		return result;
+	}
+
+	@Nonnull
+	@SuppressWarnings("unchecked")
 	public static Configuration read(@Nonnull JSONObject json) {
 		Configuration config = new Configuration();
 		json.onObject("discord", jDiscord -> {
@@ -64,27 +98,25 @@ public final class Configuration {
 		});
 		json.onObject("appearance", jAppearance -> {
 			jAppearance.onString("avatarUrlFormat", config.appearance::setAvatarUrlFormat);
-			jAppearance.onList("defaultIrcBackgroundColor", jRawRgb -> {
-				JSONList<Integer> jRgb = jRawRgb.ofInts();
-				//noinspection ConstantConditions
-				config.appearance.setIrcDefaultBackgroundColor(new Color(jRgb.get(0), jRgb.get(1), jRgb.get(2)));
-			});
-			jAppearance.onList("defaultIrcTextColor", jRawRgb -> {
-				JSONList<Integer> jRgb = jRawRgb.ofInts();
-				//noinspection ConstantConditions
-				config.appearance.setIrcDefaultTextColor(new Color(jRgb.get(0), jRgb.get(1), jRgb.get(2)));
-			});
+			jAppearance.onList("defaultIrcBackgroundColor", jRawRgb -> config.appearance.setIrcDefaultBackgroundColor(readColor((JSONList<Number>)jRawRgb)));
+			jAppearance.onList("defaultIrcTextColor", jRawRgb -> config.appearance.setIrcDefaultTextColor(readColor((JSONList<Number>)jRawRgb)));
 			jAppearance.onObject("ircColors", jIrcColors -> {
 				for (String jIrcColorKey : jIrcColors.keySet()) {
 					try {
 						IrcColor ircColor = IrcColor.valueOf(jIrcColorKey);
-						JSONList<Integer> jRgb = jIrcColors.getList(jIrcColorKey).ofInts();
-						//noinspection ConstantConditions
-						Color color = new Color(jRgb.get(0), jRgb.get(1), jRgb.get(2));
-						config.appearance.ircColors.put(ircColor, color);
+						config.appearance.ircColors.put(ircColor, readColor((JSONList<Number>)jIrcColors.getList(jIrcColorKey)));
 					} catch (Exception ignored) {
 					}
 				}
+			});
+			jAppearance.onObject("events", jEvents -> {
+				jEvents.onList("connectedColor", jRawRgb -> config.appearance.events.setConnectedColor(readColor((JSONList<Number>)jRawRgb)));
+				jEvents.onList("disconnectedColor", jRawRgb -> config.appearance.events.setDisconnectedColor(readColor((JSONList<Number>)jRawRgb)));
+			});
+			jAppearance.onObject("userInfo", jUserInfo -> {
+				jUserInfo.onList("joinColor", jRawRgb -> config.appearance.userInfo.setJoinColor(readColor((JSONList<Number>)jRawRgb)));
+				jUserInfo.onList("leaveColor", jRawRgb -> config.appearance.userInfo.setLeaveColor(readColor((JSONList<Number>)jRawRgb)));
+				jUserInfo.onList("nickChangeColor", jRawRgb -> config.appearance.userInfo.setNickChangeColor(readColor((JSONList<Number>)jRawRgb)));
 			});
 		});
 		return config;
@@ -126,26 +158,23 @@ public final class Configuration {
 				),
 				"appearance", JSONObject.of(
 						"avatarUrlFormat", appearance.avatarUrlFormat,
-						"defaultIrcBackgroundColor", JSONList.of(
-								appearance.ircDefaultBackgroundColor.getRed(),
-								appearance.ircDefaultBackgroundColor.getGreen(),
-								appearance.ircDefaultBackgroundColor.getBlue()
-						),
-						"defaultIrcTextColor", JSONList.of(
-								appearance.ircDefaultTextColor.getRed(),
-								appearance.ircDefaultTextColor.getGreen(),
-								appearance.ircDefaultTextColor.getBlue()
-						),
+						"defaultIrcBackgroundColor", writeColor(appearance.ircDefaultBackgroundColor),
+						"defaultIrcTextColor", writeColor(appearance.ircDefaultTextColor),
 						"ircColors", new JSONObject(
 								appearance.ircColors.entrySet().stream()
 										.collect(Collectors.toMap(
 												entry -> entry.getKey().name(),
-												entry -> JSONList.of(
-														entry.getValue().getRed(),
-														entry.getValue().getGreen(),
-														entry.getValue().getBlue()
-												)
+												entry -> writeColor(entry.getValue())
 										))
+						),
+						"events", JSONObject.of(
+								"connectedColor", writeColor(appearance.events.connectedColor),
+								"disconnectedColor", writeColor(appearance.events.disconnectedColor)
+						),
+						"userInfo", JSONObject.of(
+								"joinColor", writeColor(appearance.userInfo.joinColor),
+								"leaveColor", writeColor(appearance.userInfo.leaveColor),
+								"nickChangeColor", writeColor(appearance.userInfo.nickChangeColor)
 						)
 				)
 		);
@@ -263,7 +292,14 @@ public final class Configuration {
 
 		private Color ircDefaultTextColor = Color.BLACK;
 
+		@Nonnull
 		private final Map<IrcColor, Color> ircColors = new TreeMap<>();
+
+		@Nonnull
+		public final Events events = new Events();
+
+		@Nonnull
+		public final UserInfo userInfo = new UserInfo();
 
 		public Appearance() {
 			ircColors.put(IrcColor.White, new Color(255, 255, 255));
@@ -303,6 +339,29 @@ public final class Configuration {
 		@Nonnull
 		public Color getColor(@Nonnull IrcColor ircColor) {
 			return ircColors.get(ircColor);
+		}
+
+		@Getter
+		@Setter
+		public static final class Events {
+			@Nonnull
+			private Color connectedColor = new Color(30, 200, 30);
+
+			@Nonnull
+			private Color disconnectedColor = new Color(200, 30, 30);
+		}
+
+		@Getter
+		@Setter
+		public static final class UserInfo {
+			@Nonnull
+			private Color joinColor = new Color(30, 200, 30);
+
+			@Nonnull
+			private Color leaveColor = new Color(200, 30, 30);
+
+			@Nonnull
+			private Color nickChangeColor = new Color(140, 163, 255);
 		}
 	}
 }
