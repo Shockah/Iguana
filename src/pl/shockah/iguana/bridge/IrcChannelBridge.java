@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.time.Instant;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 
 import lombok.Getter;
@@ -38,18 +37,8 @@ import pl.shockah.iguana.command.CommandCall;
 import pl.shockah.iguana.format.irc.IrcFormattingConstants;
 import pl.shockah.unicorn.UnexpectedException;
 import pl.shockah.unicorn.collection.Either2;
-import pl.shockah.unicorn.color.LCHColorSpace;
 
 public class IrcChannelBridge {
-	@Nonnull
-	private static final String ALLOWED_NONALPHANUMERIC_NICKNAME_CHARACTERS = "[\\]^_-{|}";
-
-	@Nonnull
-	private static final float[] NICKNAME_LENGTH_LIGHTNESS = new float[] { 0.55f, 0.65f, 0.75f, 0.85f };
-
-	@Nonnull
-	private static final float[] NICKNAME_LENGTH_CHROMA = new float[] { 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
-
 	@Nonnull
 	@Getter
 	private final IguanaSession session;
@@ -92,54 +81,6 @@ public class IrcChannelBridge {
 		this.ircChannelConfig = ircChannelConfig;
 	}
 
-	private float getAtReversingRepeatingIndex(@Nonnull float[] array, int index) {
-		int maxIndex = array.length * 2 - 2;
-		int semiIndex = index % maxIndex;
-		if (semiIndex < array.length)
-			return array[semiIndex];
-		else
-			return array[maxIndex - semiIndex];
-	}
-
-	@Nonnull
-	private LCHColorSpace getLchBackgroundColorForNickname(@Nonnull String nickname) {
-		StringBuilder sb = new StringBuilder(nickname.toLowerCase());
-		for (int i = 0; i < sb.length(); i++) {
-			if (ALLOWED_NONALPHANUMERIC_NICKNAME_CHARACTERS.indexOf(sb.charAt(i)) != -1)
-				sb.deleteCharAt(i--);
-		}
-		for (int i = sb.length() - 1; i >= 0; i--) {
-			char c = sb.charAt(i);
-			if (c >= '0' && c <= '9')
-				sb.deleteCharAt(i);
-			else
-				break;
-		}
-
-		return new LCHColorSpace(
-				getAtReversingRepeatingIndex(NICKNAME_LENGTH_LIGHTNESS, nickname.length() - 1) * 100f,
-				getAtReversingRepeatingIndex(NICKNAME_LENGTH_CHROMA, nickname.length() - 1) * 133f,
-				(sb.toString().hashCode() % 100) / 100f
-		);
-	}
-
-	@Nonnull
-	private LCHColorSpace getLchTextColorForBackgroundColor(@Nonnull LCHColorSpace backgroundColor) {
-		LCHColorSpace result = new LCHColorSpace(backgroundColor.l, backgroundColor.c, backgroundColor.h);
-		if (backgroundColor.l < 50f)
-			result.l += 40f;
-		else
-			result.l -= 40f;
-		return result;
-	}
-
-	@Nullable
-	public String getAvatarUrl(@Nonnull String nickname) {
-		LCHColorSpace lchBackgroundColor = getLchBackgroundColorForNickname(nickname);
-		LCHColorSpace lchTextColor = getLchTextColorForBackgroundColor(lchBackgroundColor);
-		return session.getConfiguration().appearance.getAvatarUrl(nickname, lchBackgroundColor.toRGB(), lchTextColor.toRGB());
-	}
-
 	@Nonnull
 	public String getFullIrcNickname(@Nonnull User user) {
 		String nickname = user.getNick();
@@ -162,7 +103,7 @@ public class IrcChannelBridge {
 		try {
 			WebhookMessageBuilder builder = new WebhookMessageBuilder()
 					.setUsername(getFullIrcNickname(user))
-					.setAvatarUrl(getAvatarUrl(user.getNick()));
+					.setAvatarUrl(session.getBridge().getAvatarUrl(user.getNick()));
 
 			getFormattedIrcToDiscordMessage(message).apply(
 					builder::setContent,
@@ -222,7 +163,7 @@ public class IrcChannelBridge {
 
 		WebhookMessageBuilder builder = new WebhookMessageBuilder()
 				.setUsername(getFullIrcNickname(user))
-				.setAvatarUrl(getAvatarUrl(user.getNick()));
+				.setAvatarUrl(session.getBridge().getAvatarUrl(user.getNick()));
 
 		getFormattedIrcToDiscordMessage(event.getMessage()).apply(
 				text -> builder.addEmbeds(new EmbedBuilder()

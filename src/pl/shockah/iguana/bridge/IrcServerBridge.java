@@ -19,6 +19,7 @@ import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.hooks.events.NickChangeEvent;
 import org.pircbotx.hooks.events.NoticeEvent;
 import org.pircbotx.hooks.events.PartEvent;
+import org.pircbotx.hooks.events.PrivateMessageEvent;
 import org.pircbotx.hooks.events.QuitEvent;
 import org.pircbotx.hooks.events.ServerResponseEvent;
 import org.pircbotx.hooks.events.TopicEvent;
@@ -62,6 +63,10 @@ public class IrcServerBridge {
 	private final ReadWriteMap<Configuration.IRC.Server.Channel, IrcChannelBridge> channels = new ReadWriteMap<>(new HashMap<>());
 
 	@Nonnull
+	@Getter
+	private final ReadWriteMap<Configuration.IRC.Server.Private, IrcPrivateBridge> privateBridges = new ReadWriteMap<>(new HashMap<>());
+
+	@Nonnull
 	@Getter(lazy = true)
 	private final Category discordChannelCategory = ircServerConfig.getDiscordChannelCategory(session.getDiscord());
 
@@ -87,7 +92,7 @@ public class IrcServerBridge {
 	private final boolean availableWhoX = ircBot.getServerInfo().isWhoX();
 
 	@Nonnull
-	private final NickServIdentityManager nickServIdentityManager = new NickServIdentityManager();
+	protected final NickServIdentityManager nickServIdentityManager = new NickServIdentityManager();
 
 	public IrcServerBridge(@Nonnull IguanaSession session, @Nonnull Configuration.IRC.Server ircServerConfig) {
 		this.session = session;
@@ -152,10 +157,30 @@ public class IrcServerBridge {
 	protected final IrcChannelBridge getChannelBridge(@Nonnull Channel channel) {
 		return channels.readOperation(channels -> {
 			for (Map.Entry<Configuration.IRC.Server.Channel, IrcChannelBridge> entry : channels.entrySet()) {
-				if (entry.getKey().getName().equals(channel.getName())) {
+				if (entry.getKey().getName().equals(channel.getName()))
 					return entry.getValue();
+			}
+			throw new IllegalStateException();
+		});
+	}
+
+	@Nonnull
+	protected final IrcPrivateBridge getPrivateBridge(@Nonnull User user) {
+		return privateBridges.writeOperation(privateBridges -> {
+			for (Map.Entry<Configuration.IRC.Server.Private, IrcPrivateBridge> entry : privateBridges.entrySet()) {
+				String nick = user.getNick();
+				String account = nickServIdentityManager.getAccountForUser(user);
+
+				if (entry.getKey().isNickServAccount()) {
+					if (entry.getKey().getName().equals(account))
+						return entry.getValue();
+				} else {
+					if (entry.getKey().getName().equals(nick))
+						return entry.getValue();
 				}
 			}
+
+			// TODO: create and return new
 			throw new IllegalStateException();
 		});
 	}
@@ -214,6 +239,13 @@ public class IrcServerBridge {
 				return;
 
 			getChannelBridge(channel).onChannelNotice(event);
+		}
+
+		@Override
+		public void onPrivateMessage(PrivateMessageEvent event) throws Exception {
+			super.onPrivateMessage(event);
+
+			getPrivateBridge(event.getUser()).onPrivateMessage(event);
 		}
 
 		@Override

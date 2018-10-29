@@ -277,6 +277,28 @@ public final class Configuration {
 					return jda.getWebhookById(webhookId).complete();
 				}
 			}
+
+			@Getter
+			@Setter
+			public static final class Private {
+				private String name;
+
+				private boolean isNickServAccount;
+
+				private long discordChannelId;
+
+				private long webhookId;
+
+				@Nonnull
+				public TextChannel getDiscordChannel(@Nonnull JDA jda) {
+					return jda.getTextChannelById(discordChannelId);
+				}
+
+				@Nonnull
+				public Webhook getWebhook(@Nonnull JDA jda) {
+					return jda.getWebhookById(webhookId).complete();
+				}
+			}
 		}
 	}
 

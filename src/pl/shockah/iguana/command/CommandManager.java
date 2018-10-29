@@ -21,6 +21,9 @@ public class CommandManager {
 	@Nonnull
 	private final Set<ChannelCommand> channelCommands = new LinkedHashSet<>();
 
+	@Nonnull
+	private final Set<UserCommand> userCommands = new LinkedHashSet<>();
+
 	public <C extends GlobalCommand & NamedCommand> void register(@Nonnull C command) {
 		globalCommands.add(command);
 	}
@@ -31,6 +34,10 @@ public class CommandManager {
 
 	public <C extends ChannelCommand & NamedCommand> void register(@Nonnull C command) {
 		channelCommands.add(command);
+	}
+
+	public <C extends UserCommand & NamedCommand> void register(@Nonnull C command) {
+		userCommands.add(command);
 	}
 
 	@Nullable
@@ -72,6 +79,22 @@ public class CommandManager {
 	@SuppressWarnings("unchecked")
 	public <C extends ChannelCommand & NamedCommand> C getCommandForChannelContext(@Nonnull String name) {
 		for (ChannelCommand command : channelCommands) {
+			NamedCommand namedCommand = (NamedCommand)command;
+			if (namedCommand.getName().equalsIgnoreCase(name))
+				return (C)command;
+		}
+
+		ServerCommand serverCommand = getCommandForServerContext(name);
+		if (serverCommand != null)
+			return (C)serverCommand.asChannel();
+
+		return null;
+	}
+
+	@Nullable
+	@SuppressWarnings("unchecked")
+	public <C extends UserCommand & NamedCommand> C getCommandForUserContext(@Nonnull String name) {
+		for (UserCommand command : userCommands) {
 			NamedCommand namedCommand = (NamedCommand)command;
 			if (namedCommand.getName().equalsIgnoreCase(name))
 				return (C)command;

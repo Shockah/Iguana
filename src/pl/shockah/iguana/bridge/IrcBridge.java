@@ -11,15 +11,26 @@ import net.dv8tion.jda.core.hooks.ListenerAdapter;
 import java.util.HashMap;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import lombok.Getter;
 import pl.shockah.iguana.Configuration;
 import pl.shockah.iguana.IguanaSession;
 import pl.shockah.iguana.command.CommandManager;
+import pl.shockah.unicorn.color.LCHColorSpace;
 import pl.shockah.util.Box;
 import pl.shockah.util.ReadWriteMap;
 
 public class IrcBridge extends ListenerAdapter {
+	@Nonnull
+	protected static final String ALLOWED_NONALPHANUMERIC_NICKNAME_CHARACTERS = "[\\]^_-{|}";
+
+	@Nonnull
+	protected static final float[] NICKNAME_LENGTH_LIGHTNESS = new float[] { 0.55f, 0.65f, 0.75f, 0.85f };
+
+	@Nonnull
+	protected static final float[] NICKNAME_LENGTH_CHROMA = new float[] { 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
+
 	@Nonnull
 	@Getter
 	private final IguanaSession session;
@@ -38,6 +49,54 @@ public class IrcBridge extends ListenerAdapter {
 
 	public IrcBridge(@Nonnull IguanaSession session) {
 		this.session = session;
+	}
+
+	private float getAtReversingRepeatingIndex(@Nonnull float[] array, int index) {
+		int maxIndex = array.length * 2 - 2;
+		int semiIndex = index % maxIndex;
+		if (semiIndex < array.length)
+			return array[semiIndex];
+		else
+			return array[maxIndex - semiIndex];
+	}
+
+	@Nonnull
+	private LCHColorSpace getLchBackgroundColorForNickname(@Nonnull String nickname) {
+		StringBuilder sb = new StringBuilder(nickname.toLowerCase());
+		for (int i = 0; i < sb.length(); i++) {
+			if (IrcBridge.ALLOWED_NONALPHANUMERIC_NICKNAME_CHARACTERS.indexOf(sb.charAt(i)) != -1)
+				sb.deleteCharAt(i--);
+		}
+		for (int i = sb.length() - 1; i >= 0; i--) {
+			char c = sb.charAt(i);
+			if (c >= '0' && c <= '9')
+				sb.deleteCharAt(i);
+			else
+				break;
+		}
+
+		return new LCHColorSpace(
+				getAtReversingRepeatingIndex(IrcBridge.NICKNAME_LENGTH_LIGHTNESS, nickname.length() - 1) * 100f,
+				getAtReversingRepeatingIndex(IrcBridge.NICKNAME_LENGTH_CHROMA, nickname.length() - 1) * 133f,
+				(sb.toString().hashCode() % 100) / 100f
+		);
+	}
+
+	@Nonnull
+	private LCHColorSpace getLchTextColorForBackgroundColor(@Nonnull LCHColorSpace backgroundColor) {
+		LCHColorSpace result = new LCHColorSpace(backgroundColor.l, backgroundColor.c, backgroundColor.h);
+		if (backgroundColor.l < 50f)
+			result.l += 40f;
+		else
+			result.l -= 40f;
+		return result;
+	}
+
+	@Nullable
+	public String getAvatarUrl(@Nonnull String nickname) {
+		LCHColorSpace lchBackgroundColor = getLchBackgroundColorForNickname(nickname);
+		LCHColorSpace lchTextColor = getLchTextColorForBackgroundColor(lchBackgroundColor);
+		return session.getConfiguration().appearance.getAvatarUrl(nickname, lchBackgroundColor.toRGB(), lchTextColor.toRGB());
 	}
 
 	@Nonnull
