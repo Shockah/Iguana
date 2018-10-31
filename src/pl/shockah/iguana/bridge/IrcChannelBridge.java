@@ -38,19 +38,7 @@ import pl.shockah.iguana.format.irc.IrcFormattingConstants;
 import pl.shockah.unicorn.UnexpectedException;
 import pl.shockah.unicorn.collection.Either2;
 
-public class IrcChannelBridge {
-	@Nonnull
-	@Getter
-	private final IguanaSession session;
-
-	@Nonnull
-	@Getter
-	private final PircBotX ircBot;
-
-	@Nonnull
-	@Getter
-	private final IrcServerBridge serverBridge;
-
+public class IrcChannelBridge extends IrcMessageBridge {
 	@Nonnull
 	@Getter
 	private final Configuration.IRC.Server.Channel ircChannelConfig;
@@ -68,21 +56,22 @@ public class IrcChannelBridge {
 	private final Channel ircChannel = ircBot.getUserChannelDao().getChannel(ircChannelConfig.getName());
 
 	@Nonnull
-	@Getter(lazy = true)
-	private final WebhookClientWrapper webhookClient = new WebhookClientWrapper(ircChannelConfig.getWebhook(session.getDiscord()).newClient().build());
-
-	@Nonnull
 	public static final Color defaultOtherActionColor = new Color(127, 127, 127);
 
 	public IrcChannelBridge(@Nonnull IrcServerBridge serverBridge, @Nonnull Configuration.IRC.Server.Channel ircChannelConfig) {
-		session = serverBridge.getSession();
-		ircBot = serverBridge.getIrcBot();
-		this.serverBridge = serverBridge;
+		super(serverBridge);
 		this.ircChannelConfig = ircChannelConfig;
 	}
 
 	@Nonnull
-	public String getFullIrcNickname(@Nonnull User user) {
+	@Override
+	protected WebhookClientWrapper initializeWebhookClient() {
+		return new WebhookClientWrapper(ircChannelConfig.getWebhook(session.getDiscord()).newClient().build());
+	}
+
+	@Nonnull
+	@Override
+	protected String formatNick(@Nonnull User user) {
 		String nickname = user.getNick();
 		if (getIrcChannel().hasVoice(user))
 			nickname = String.format("+%s", nickname);
@@ -91,38 +80,6 @@ public class IrcChannelBridge {
 		else if (getIrcChannel().isOp(user))
 			nickname = String.format("@%s", nickname);
 		return nickname;
-	}
-
-	@Nonnull
-	private Either2<String, BufferedImage> getFormattedIrcToDiscordMessage(@Nonnull String ircMessage) {
-		ircMessage = ircMessage.replace(ircBot.getUserBot().getNick(), session.getConfiguration().discord.getOwnerUser(session.getDiscord()).getAsMention());
-		return session.getDiscordFormatter().output(session.getIrcFormatter().parse(ircMessage, null), null);
-	}
-
-	private void onChannelMessage(@Nonnull User user, @Nonnull String message) {
-		try {
-			WebhookMessageBuilder builder = new WebhookMessageBuilder()
-					.setUsername(getFullIrcNickname(user))
-					.setAvatarUrl(session.getBridge().getAvatarUrl(user.getNick()));
-
-			getFormattedIrcToDiscordMessage(message).apply(
-					builder::setContent,
-					image -> {
-						try {
-							ByteArrayOutputStream baos = new ByteArrayOutputStream();
-							ImageIO.write(image, "png", baos);
-							builder.addFile("formatted-irc-message.png", baos.toByteArray());
-						} catch (IOException e) {
-							throw new UnexpectedException(e);
-						}
-					}
-			);
-
-			getWebhookClient().send(builder.build());
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw e;
-		}
 	}
 
 	public void onChannelMessage(@Nonnull MessageEvent event) {
@@ -134,7 +91,7 @@ public class IrcChannelBridge {
 		if (user == null)
 			return;
 
-		onChannelMessage(user, event.getMessage());
+		onMessage(user, event.getMessage());
 	}
 
 	public void onChannelAction(@Nonnull ActionEvent event) {
@@ -149,7 +106,7 @@ public class IrcChannelBridge {
 		String italicizedMessage = event.getMessage();
 		italicizedMessage = italicizedMessage.replace(IrcFormattingConstants.RESET, IrcFormattingConstants.RESET + IrcFormattingConstants.ITALIC);
 		italicizedMessage = IrcFormattingConstants.ITALIC + italicizedMessage;
-		onChannelMessage(user, italicizedMessage);
+		onMessage(user, italicizedMessage);
 	}
 
 	public void onChannelNotice(@Nonnull NoticeEvent event) {
@@ -161,28 +118,7 @@ public class IrcChannelBridge {
 		if (user == null)
 			return;
 
-		WebhookMessageBuilder builder = new WebhookMessageBuilder()
-				.setUsername(getFullIrcNickname(user))
-				.setAvatarUrl(session.getBridge().getAvatarUrl(user.getNick()));
-
-		getFormattedIrcToDiscordMessage(event.getMessage()).apply(
-				text -> builder.addEmbeds(new EmbedBuilder()
-						.setTitle("Notice")
-						.setDescription(text)
-						.build()),
-				image -> {
-					try {
-						ByteArrayOutputStream baos = new ByteArrayOutputStream();
-						ImageIO.write(image, "png", baos);
-						builder.setContent("**Notice**");
-						builder.addFile("formatted-irc-message.png", baos.toByteArray());
-					} catch (IOException e) {
-						throw new UnexpectedException(e);
-					}
-				}
-		);
-
-		getWebhookClient().send(builder.build());
+		onMessage(user, event.getMessage(), true);
 	}
 
 	public void onSelfJoin(@Nonnull JoinEvent event) {
