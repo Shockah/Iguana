@@ -24,22 +24,12 @@ import pl.shockah.iguana.format.irc.IrcFormattingConstants;
 
 public class IrcPrivateBridge extends IrcMessageBridge {
 	@Nonnull
-	private static final float[] NICKNAME_LENGTH_LIGHTNESS = new float[] { 0.55f, 0.65f, 0.75f, 0.85f };
-
-	@Nonnull
-	private static final float[] NICKNAME_LENGTH_CHROMA = new float[] { 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
-
-	@Nonnull
 	@Getter
 	private final Configuration.IRC.Server.Private ircPrivateConfig;
 
 	@Nonnull
 	@Getter(lazy = true)
 	private final TextChannel discordChannel = ircPrivateConfig.getDiscordChannel(session.getDiscord());
-
-//	@Nonnull
-//	@Getter(lazy = true)
-//	private final Channel ircChannel = ircBot.getUserChannelDao().getChannel(ircChannelConfig.getName());
 
 	public IrcPrivateBridge(@Nonnull IrcServerBridge serverBridge, @Nonnull Configuration.IRC.Server.Private ircPrivateConfig) {
 		super(serverBridge);

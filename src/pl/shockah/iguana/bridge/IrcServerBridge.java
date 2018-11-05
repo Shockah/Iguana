@@ -15,14 +15,19 @@ import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.ConnectEvent;
 import org.pircbotx.hooks.events.DisconnectEvent;
 import org.pircbotx.hooks.events.JoinEvent;
+import org.pircbotx.hooks.events.KickEvent;
 import org.pircbotx.hooks.events.MessageEvent;
+import org.pircbotx.hooks.events.ModeEvent;
 import org.pircbotx.hooks.events.NickChangeEvent;
 import org.pircbotx.hooks.events.NoticeEvent;
 import org.pircbotx.hooks.events.PartEvent;
 import org.pircbotx.hooks.events.PrivateMessageEvent;
 import org.pircbotx.hooks.events.QuitEvent;
+import org.pircbotx.hooks.events.RemoveChannelBanEvent;
 import org.pircbotx.hooks.events.ServerResponseEvent;
+import org.pircbotx.hooks.events.SetChannelBanEvent;
 import org.pircbotx.hooks.events.TopicEvent;
+import org.pircbotx.hooks.events.UserModeEvent;
 import org.pircbotx.hooks.managers.ThreadedListenerManager;
 import org.pircbotx.snapshot.UserChannelDaoSnapshot;
 
@@ -180,8 +185,11 @@ public class IrcServerBridge {
 				}
 			}
 
-			// TODO: create and return new
-			throw new IllegalStateException();
+			Configuration.IRC.Server.Private privateConfig = new Configuration.IRC.Server.Private();
+			IrcPrivateBridge privateBridge = new IrcPrivateBridge(this, privateConfig);
+			session.getBridge().prepareIrcPrivateChannelTask(ircServerConfig, privateConfig).run();
+			privateBridges.put(privateConfig, privateBridge);
+			return privateBridge;
 		});
 	}
 
@@ -191,7 +199,7 @@ public class IrcServerBridge {
 			super.onConnect(event);
 
 			getDiscordManagementChannel().sendMessage(new EmbedBuilder()
-					.setColor(session.getConfiguration().appearance.events.getConnectedColor())
+					.setColor(session.getConfiguration().appearance.serverEvents.getConnectedColor())
 					.setDescription(String.format("Connected to `%s`.", ircServerConfig.getHost()))
 					.setTimestamp(Instant.now())
 					.build()).queue();
@@ -202,7 +210,7 @@ public class IrcServerBridge {
 			super.onDisconnect(event);
 
 			getDiscordManagementChannel().sendMessage(new EmbedBuilder()
-					.setColor(session.getConfiguration().appearance.events.getDisconnectedColor())
+					.setColor(session.getConfiguration().appearance.serverEvents.getDisconnectedColor())
 					.setDescription(String.format("Disconnected from `%s`.", ircServerConfig.getHost()))
 					.setTimestamp(Instant.now())
 					.build()).queue();
@@ -245,7 +253,11 @@ public class IrcServerBridge {
 		public void onPrivateMessage(PrivateMessageEvent event) throws Exception {
 			super.onPrivateMessage(event);
 
-			getPrivateBridge(event.getUser()).onPrivateMessage(event);
+			User user = event.getUser();
+			if (user == null)
+				return;
+
+			getPrivateBridge(user).onPrivateMessage(event);
 		}
 
 		@Override
@@ -321,6 +333,63 @@ public class IrcServerBridge {
 				return;
 
 			getChannelBridge(channel).onTopic(event);
+		}
+
+		@Override
+		public void onKick(KickEvent event) throws Exception {
+			super.onKick(event);
+
+			Channel channel = event.getChannel();
+			if (channel == null)
+				return;
+
+			getChannelBridge(channel).onKick(event);
+		}
+
+		@Override
+		public void onSetChannelBan(SetChannelBanEvent event) throws Exception {
+			super.onSetChannelBan(event);
+
+			Channel channel = event.getChannel();
+			if (channel == null)
+				return;
+
+			getChannelBridge(channel).onSetChannelBan(event);
+		}
+
+		@Override
+		public void onRemoveChannelBan(RemoveChannelBanEvent event) throws Exception {
+			super.onRemoveChannelBan(event);
+
+			Channel channel = event.getChannel();
+			if (channel == null)
+				return;
+
+			getChannelBridge(channel).onRemoveChannelBan(event);
+		}
+
+		@Override
+		public void onMode(ModeEvent event) throws Exception {
+			super.onMode(event);
+
+			Channel channel = event.getChannel();
+			if (channel == null)
+				return;
+
+			if (event.getModeParsed().contains("+b") || event.getModeParsed().contains("-b"))
+				return;
+
+			getChannelBridge(channel).onMode(event);
+		}
+
+		@Override
+		public void onUserMode(UserModeEvent event) throws Exception {
+			super.onUserMode(event);
+
+			channels.iterateValues(bridge -> {
+				if (bridge.getIrcChannel().getUsers().contains(event.getRecipient()))
+					bridge.onUserMode(event);
+			});
 		}
 
 		@Override

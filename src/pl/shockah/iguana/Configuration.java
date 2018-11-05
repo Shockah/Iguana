@@ -109,14 +109,19 @@ public final class Configuration {
 					}
 				}
 			});
-			jAppearance.onObject("events", jEvents -> {
-				jEvents.onList("connectedColor", jRawRgb -> config.appearance.events.setConnectedColor(readColor((JSONList<Number>)jRawRgb)));
-				jEvents.onList("disconnectedColor", jRawRgb -> config.appearance.events.setDisconnectedColor(readColor((JSONList<Number>)jRawRgb)));
+			jAppearance.onObject("serverEvents", jEvents -> {
+				jEvents.onList("connectedColor", jRawRgb -> config.appearance.serverEvents.setConnectedColor(readColor((JSONList<Number>)jRawRgb)));
+				jEvents.onList("disconnectedColor", jRawRgb -> config.appearance.serverEvents.setDisconnectedColor(readColor((JSONList<Number>)jRawRgb)));
 			});
-			jAppearance.onObject("userInfo", jUserInfo -> {
-				jUserInfo.onList("joinColor", jRawRgb -> config.appearance.userInfo.setJoinColor(readColor((JSONList<Number>)jRawRgb)));
-				jUserInfo.onList("leaveColor", jRawRgb -> config.appearance.userInfo.setLeaveColor(readColor((JSONList<Number>)jRawRgb)));
-				jUserInfo.onList("nickChangeColor", jRawRgb -> config.appearance.userInfo.setNickChangeColor(readColor((JSONList<Number>)jRawRgb)));
+			jAppearance.onObject("channelEvents", jUserInfo -> {
+				jUserInfo.onList("joinColor", jRawRgb -> config.appearance.channelEvents.setJoinColor(readColor((JSONList<Number>)jRawRgb)));
+				jUserInfo.onList("leaveColor", jRawRgb -> config.appearance.channelEvents.setLeaveColor(readColor((JSONList<Number>)jRawRgb)));
+				jUserInfo.onList("nickChangeColor", jRawRgb -> config.appearance.channelEvents.setNickChangeColor(readColor((JSONList<Number>)jRawRgb)));
+				jUserInfo.onList("topicColor", jRawRgb -> config.appearance.channelEvents.setTopicColor(readColor((JSONList<Number>)jRawRgb)));
+				jUserInfo.onList("kickColor", jRawRgb -> config.appearance.channelEvents.setKickColor(readColor((JSONList<Number>)jRawRgb)));
+				jUserInfo.onList("banColor", jRawRgb -> config.appearance.channelEvents.setBanColor(readColor((JSONList<Number>)jRawRgb)));
+				jUserInfo.onList("unbanColor", jRawRgb -> config.appearance.channelEvents.setUnbanColor(readColor((JSONList<Number>)jRawRgb)));
+				jUserInfo.onList("modeColor", jRawRgb -> config.appearance.channelEvents.setModeColor(readColor((JSONList<Number>)jRawRgb)));
 			});
 		});
 		return config;
@@ -167,14 +172,19 @@ public final class Configuration {
 												entry -> writeColor(entry.getValue())
 										))
 						),
-						"events", JSONObject.of(
-								"connectedColor", writeColor(appearance.events.connectedColor),
-								"disconnectedColor", writeColor(appearance.events.disconnectedColor)
+						"serverEvents", JSONObject.of(
+								"connectedColor", writeColor(appearance.serverEvents.connectedColor),
+								"disconnectedColor", writeColor(appearance.serverEvents.disconnectedColor)
 						),
-						"userInfo", JSONObject.of(
-								"joinColor", writeColor(appearance.userInfo.joinColor),
-								"leaveColor", writeColor(appearance.userInfo.leaveColor),
-								"nickChangeColor", writeColor(appearance.userInfo.nickChangeColor)
+						"channelEvents", JSONObject.of(
+								"joinColor", writeColor(appearance.channelEvents.joinColor),
+								"leaveColor", writeColor(appearance.channelEvents.leaveColor),
+								"nickChangeColor", writeColor(appearance.channelEvents.nickChangeColor),
+								"topicColor", writeColor(appearance.channelEvents.topicColor),
+								"kickColor", writeColor(appearance.channelEvents.kickColor),
+								"banColor", writeColor(appearance.channelEvents.banColor),
+								"unbanColor", writeColor(appearance.channelEvents.unbanColor),
+								"modeColor", writeColor(appearance.channelEvents.modeColor)
 						)
 				)
 		);
@@ -318,10 +328,10 @@ public final class Configuration {
 		private final Map<IrcColor, Color> ircColors = new TreeMap<>();
 
 		@Nonnull
-		public final Events events = new Events();
+		public final ServerEvents serverEvents = new ServerEvents();
 
 		@Nonnull
-		public final UserInfo userInfo = new UserInfo();
+		public final ChannelEvents channelEvents = new ChannelEvents();
 
 		public Appearance() {
 			ircColors.put(IrcColor.White, new Color(255, 255, 255));
@@ -365,7 +375,7 @@ public final class Configuration {
 
 		@Getter
 		@Setter
-		public static final class Events {
+		public static final class ServerEvents {
 			@Nonnull
 			private Color connectedColor = new Color(30, 200, 30);
 
@@ -375,7 +385,7 @@ public final class Configuration {
 
 		@Getter
 		@Setter
-		public static final class UserInfo {
+		public static final class ChannelEvents {
 			@Nonnull
 			private Color joinColor = new Color(30, 200, 30);
 
@@ -384,6 +394,21 @@ public final class Configuration {
 
 			@Nonnull
 			private Color nickChangeColor = new Color(140, 163, 255);
+
+			@Nonnull
+			private Color topicColor = new Color(127, 127, 127);
+
+			@Nonnull
+			private Color kickColor = new Color(230, 150, 0);
+
+			@Nonnull
+			private Color banColor = new Color(230, 150, 0);
+
+			@Nonnull
+			private Color unbanColor = new Color(230, 200, 0);
+
+			@Nonnull
+			private Color modeColor = new Color(127, 127, 127);
 		}
 	}
 }

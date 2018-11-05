@@ -8,6 +8,8 @@ import net.dv8tion.jda.core.entities.Webhook;
 import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.core.hooks.ListenerAdapter;
 
+import org.pircbotx.UserHostmask;
+
 import java.util.HashMap;
 
 import javax.annotation.Nonnull;
@@ -100,6 +102,19 @@ public class IrcBridge extends ListenerAdapter {
 	}
 
 	@Nonnull
+	public String getDiscordFormattedFullUserInfo(@Nonnull org.pircbotx.User user) {
+		return String.format("**%s** (%s)", user.getNick(), getDiscordFormattedHostmask(user));
+	}
+
+	@Nonnull
+	public String getDiscordFormattedHostmask(@Nonnull UserHostmask hostmask) {
+		String fullNick = hostmask.getNick();
+		if (hostmask.getExtbanPrefix() != null && !hostmask.getExtbanPrefix().equals(""))
+			fullNick = String.format("%s:%s", hostmask.getExtbanPrefix(), fullNick);
+		return String.format("`%s!%s@%s`", fullNick, hostmask.getLogin(), hostmask.getHostname());
+	}
+
+	@Nonnull
 	public Runnable prepareIrcTask() {
 		return () -> {
 			Guild guild;
@@ -178,6 +193,37 @@ public class IrcBridge extends ListenerAdapter {
 					webhookName = webhookName.substring(0, 32);
 				Webhook webhook = discordChannel.createWebhook(webhookName).complete();
 				ircChannelConfig.setWebhookId(webhook.getIdLong());
+			}
+		};
+	}
+
+	@Nonnull
+	public Runnable prepareIrcPrivateChannelTask(@Nonnull Configuration.IRC.Server ircServerConfig, @Nonnull Configuration.IRC.Server.Private ircPrivateConfig) {
+		return () -> {
+			Guild guild = session.getConfiguration().discord.getGuild(session.getDiscord());
+
+			Category discordCategory;
+			if (ircServerConfig.getDiscordChannelCategoryId() == 0) {
+				discordCategory = (Category)guild.getController().createCategory(ircServerConfig.getHost()).complete();
+				ircServerConfig.setDiscordChannelCategoryId(discordCategory.getIdLong());
+			} else {
+				discordCategory = ircServerConfig.getDiscordChannelCategory(session.getDiscord());
+			}
+
+			TextChannel discordChannel;
+			if (ircPrivateConfig.getDiscordChannelId() == 0) {
+				discordChannel = (TextChannel)discordCategory.createTextChannel(ircPrivateConfig.getName()).complete();
+				ircPrivateConfig.setDiscordChannelId(discordChannel.getIdLong());
+			} else {
+				discordChannel = ircPrivateConfig.getDiscordChannel(session.getDiscord());
+			}
+
+			if (ircPrivateConfig.getWebhookId() == 0) {
+				String webhookName = String.format("%s-@%s", ircServerConfig.getHost(), ircPrivateConfig.getName());
+				if (webhookName.length() > 32)
+					webhookName = webhookName.substring(0, 32);
+				Webhook webhook = discordChannel.createWebhook(webhookName).complete();
+				ircPrivateConfig.setWebhookId(webhook.getIdLong());
 			}
 		};
 	}

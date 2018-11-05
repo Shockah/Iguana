@@ -10,14 +10,18 @@ import org.pircbotx.User;
 import org.pircbotx.UserHostmask;
 import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.JoinEvent;
+import org.pircbotx.hooks.events.KickEvent;
 import org.pircbotx.hooks.events.MessageEvent;
+import org.pircbotx.hooks.events.ModeEvent;
 import org.pircbotx.hooks.events.NickChangeEvent;
 import org.pircbotx.hooks.events.NoticeEvent;
 import org.pircbotx.hooks.events.PartEvent;
 import org.pircbotx.hooks.events.QuitEvent;
+import org.pircbotx.hooks.events.RemoveChannelBanEvent;
+import org.pircbotx.hooks.events.SetChannelBanEvent;
 import org.pircbotx.hooks.events.TopicEvent;
+import org.pircbotx.hooks.events.UserModeEvent;
 
-import java.awt.Color;
 import java.time.Instant;
 
 import javax.annotation.Nonnull;
@@ -45,9 +49,6 @@ public class IrcChannelBridge extends IrcMessageBridge {
 	@Nonnull
 	@Getter(lazy = true)
 	private final Channel ircChannel = ircBot.getUserChannelDao().getChannel(ircChannelConfig.getName());
-
-	@Nonnull
-	public static final Color defaultOtherActionColor = new Color(127, 127, 127);
 
 	public IrcChannelBridge(@Nonnull IrcServerBridge serverBridge, @Nonnull Configuration.IRC.Server.Channel ircChannelConfig) {
 		super(serverBridge);
@@ -128,7 +129,7 @@ public class IrcChannelBridge extends IrcMessageBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(session.getConfiguration().appearance.userInfo.getJoinColor())
+						.setColor(session.getConfiguration().appearance.channelEvents.getJoinColor())
 						.setDescription(String.format("**%s** (`%s!%s@%s`) joined.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
 						.setTimestamp(Instant.now())
 						.build()
@@ -142,8 +143,12 @@ public class IrcChannelBridge extends IrcMessageBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(session.getConfiguration().appearance.userInfo.getLeaveColor())
-						.setDescription(String.format("**%s** (`%s!%s@%s`) left.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
+						.setColor(session.getConfiguration().appearance.channelEvents.getLeaveColor())
+						.setDescription(String.format(
+								"%s left (%s).",
+								session.getBridge().getDiscordFormattedFullUserInfo(user),
+								event.getReason()
+						))
 						.setTimestamp(Instant.now())
 						.build()
 		).queue();
@@ -156,8 +161,12 @@ public class IrcChannelBridge extends IrcMessageBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(session.getConfiguration().appearance.userInfo.getLeaveColor())
-						.setDescription(String.format("**%s** (`%s!%s@%s`) has quit.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
+						.setColor(session.getConfiguration().appearance.channelEvents.getLeaveColor())
+						.setDescription(String.format(
+								"%s has quit (%s).",
+								session.getBridge().getDiscordFormattedFullUserInfo(user),
+								event.getReason()
+						))
 						.setTimestamp(Instant.now())
 						.build()
 		).queue();
@@ -170,8 +179,12 @@ public class IrcChannelBridge extends IrcMessageBridge {
 
 		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(session.getConfiguration().appearance.userInfo.getNickChangeColor())
-						.setDescription(String.format("**%s** (`%s!%s@%s`) is now known as **%s**.", event.getOldNick(), user.getNick(), user.getLogin(), user.getHostname(), event.getNewNick()))
+						.setColor(session.getConfiguration().appearance.channelEvents.getNickChangeColor())
+						.setDescription(String.format(
+								"**%s** is now known as %s.",
+								event.getOldNick(),
+								session.getBridge().getDiscordFormattedFullUserInfo(user)
+						))
 						.setTimestamp(Instant.now())
 						.build()
 		).queue();
@@ -190,10 +203,112 @@ public class IrcChannelBridge extends IrcMessageBridge {
 
 		getDiscordChannel().sendMessage(
 				new EmbedBuilder()
-						.setColor(defaultOtherActionColor)
-						.setDescription(String.format("**%s** (`%s!%s@%s`) changed the topic.", user.getNick(), user.getNick(), user.getLogin(), user.getHostname()))
+						.setColor(session.getConfiguration().appearance.channelEvents.getTopicColor())
+						.setDescription(String.format(
+								"%s changed the topic.",
+								session.getBridge().getDiscordFormattedHostmask(user)
+						))
 						.addField("Old", event.getOldTopic().equals("") ? "<empty>" : event.getOldTopic(), false)
 						.addField("New", event.getTopic().equals("") ? "<empty>" : event.getTopic(), false)
+						.setTimestamp(Instant.now())
+						.build()
+		).queue();
+	}
+
+	public void onKick(@Nonnull KickEvent event) {
+		User user = event.getUser();
+		if (user == null)
+			return;
+		User recipient = event.getRecipient();
+		if (recipient == null)
+			return;
+
+		getDiscordChannel().sendMessage(
+				new EmbedBuilder()
+						.setColor(session.getConfiguration().appearance.channelEvents.getKickColor())
+						.setDescription(String.format(
+								"%s kicked %s.",
+								session.getBridge().getDiscordFormattedFullUserInfo(user),
+								session.getBridge().getDiscordFormattedFullUserInfo(recipient)
+						))
+						.addField("Reason", event.getReason(), false)
+						.setTimestamp(Instant.now())
+						.build()
+		).queue();
+	}
+
+	public void onSetChannelBan(@Nonnull SetChannelBanEvent event) {
+		User user = event.getUser();
+		if (user == null)
+			return;
+
+		getDiscordChannel().sendMessage(
+				new EmbedBuilder()
+						.setColor(session.getConfiguration().appearance.channelEvents.getBanColor())
+						.setDescription(String.format(
+								"%s banned %s.",
+								session.getBridge().getDiscordFormattedFullUserInfo(user),
+								session.getBridge().getDiscordFormattedHostmask(event.getBanHostmask())
+						))
+						.setTimestamp(Instant.now())
+						.build()
+		).queue();
+	}
+
+	public void onRemoveChannelBan(@Nonnull RemoveChannelBanEvent event) {
+		User user = event.getUser();
+		if (user == null)
+			return;
+
+		getDiscordChannel().sendMessage(
+				new EmbedBuilder()
+						.setColor(session.getConfiguration().appearance.channelEvents.getUnbanColor())
+						.setDescription(String.format(
+								"%s unbanned %s.",
+								session.getBridge().getDiscordFormattedFullUserInfo(user),
+								session.getBridge().getDiscordFormattedHostmask(event.getHostmask())
+						))
+						.setTimestamp(Instant.now())
+						.build()
+		).queue();
+	}
+
+	public void onMode(@Nonnull ModeEvent event) {
+		User user = event.getUser();
+		if (user == null)
+			return;
+
+		getDiscordChannel().sendMessage(
+				new EmbedBuilder()
+						.setColor(session.getConfiguration().appearance.channelEvents.getModeColor())
+						.setDescription(String.format(
+								"%s set `%s`.",
+								session.getBridge().getDiscordFormattedFullUserInfo(user),
+								event.getMode()
+						))
+						.setTimestamp(Instant.now())
+						.build()
+		).queue();
+	}
+
+	public void onUserMode(@Nonnull UserModeEvent event) {
+		User user = event.getUser();
+		if (user == null)
+			return;
+		User recipient = event.getRecipient();
+		if (recipient == null)
+			return;
+
+		getDiscordChannel().sendMessage(
+				new EmbedBuilder()
+						.setColor(session.getConfiguration().appearance.channelEvents.getModeColor())
+						.setDescription(String.format(
+								"%s set `%s` on %s.",
+								session.getBridge().getDiscordFormattedFullUserInfo(user),
+								event.getMode(),
+								session.getBridge().getDiscordFormattedFullUserInfo(recipient)
+						))
+						.setTimestamp(Instant.now())
 						.build()
 		).queue();
 	}
