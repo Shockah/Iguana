@@ -4,10 +4,8 @@ import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
-import net.dv8tion.jda.webhook.WebhookMessageBuilder;
 
 import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import org.pircbotx.UserHostmask;
 import org.pircbotx.hooks.events.ActionEvent;
@@ -20,23 +18,16 @@ import org.pircbotx.hooks.events.QuitEvent;
 import org.pircbotx.hooks.events.TopicEvent;
 
 import java.awt.Color;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.time.Instant;
 
 import javax.annotation.Nonnull;
-import javax.imageio.ImageIO;
 
 import lombok.Getter;
 import pl.shockah.iguana.Configuration;
-import pl.shockah.iguana.IguanaSession;
 import pl.shockah.iguana.WebhookClientWrapper;
 import pl.shockah.iguana.command.ChannelCommand;
 import pl.shockah.iguana.command.CommandCall;
 import pl.shockah.iguana.format.irc.IrcFormattingConstants;
-import pl.shockah.unicorn.UnexpectedException;
-import pl.shockah.unicorn.collection.Either2;
 
 public class IrcChannelBridge extends IrcMessageBridge {
 	@Nonnull
