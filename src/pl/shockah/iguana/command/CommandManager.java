@@ -10,7 +10,7 @@ import javax.annotation.Nullable;
 
 public class CommandManager {
 	@Nonnull
-	private final Pattern commandPattern = Pattern.compile("^//?(\\S+)\\s+(.*)$");
+	private final Pattern commandPattern = Pattern.compile("^[/\\\\](\\S+)(?:\\s*(.*))$");
 
 	@Nonnull
 	private final Set<GlobalCommand> globalCommands = new LinkedHashSet<>();
