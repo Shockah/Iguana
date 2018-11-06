@@ -54,6 +54,7 @@ dependencies {
 		exclude module: "opus-java"
 	}
 	compile "org.pircbotx:pircbotx:2.1"
+	runtime "org.slf4j:slf4j-simple:1.7.25"
 }
 
 targetCompatibility = '1.8'

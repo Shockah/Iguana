@@ -123,17 +123,9 @@ public class IrcServerBridge {
 					}
 				});
 
-		for (Configuration.IRC.Server.Channel ircChannel : ircServerConfig.getChannels()) {
-			if (ircChannel.getPassword() == null)
-				ircConfigBuilder.addAutoJoinChannel(ircChannel.getName());
-			else
-				ircConfigBuilder.addAutoJoinChannel(ircChannel.getName(), ircChannel.getPassword());
-		}
-
 		if (ircServerConfig.getNickServLogin() != null) {
 			ircConfigBuilder.setNickservNick(ircServerConfig.getNickServLogin());
 			ircConfigBuilder.setNickservPassword(ircServerConfig.getNickServPassword());
-			ircConfigBuilder.setNickservDelayJoin(true);
 		}
 
 		ircBot = new PircBotX(ircConfigBuilder.buildConfiguration());
@@ -197,6 +189,17 @@ public class IrcServerBridge {
 		@Override
 		public void onConnect(ConnectEvent event) throws Exception {
 			super.onConnect(event);
+
+			// waiting for NickServ to identify
+			// TODO: actually listen for a NickServ notice
+			Thread.sleep(2500);
+
+			for (Configuration.IRC.Server.Channel ircChannel : ircServerConfig.getChannels()) {
+				if (ircChannel.getPassword() == null)
+					getIrcBot().sendIRC().joinChannel(ircChannel.getName());
+				else
+					getIrcBot().sendIRC().joinChannel(ircChannel.getName(), ircChannel.getPassword());
+			}
 
 			getDiscordManagementChannel().sendMessage(new EmbedBuilder()
 					.setColor(session.getConfiguration().appearance.serverEvents.getConnectedColor())
