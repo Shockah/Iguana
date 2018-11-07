@@ -278,7 +278,7 @@ public class IrcChannelBridge extends IrcMessageBridge {
 		if (user == null)
 			return;
 
-		getDiscordChannel().sendMessage(
+		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
 						.setColor(session.getConfiguration().appearance.channelEvents.getModeColor())
 						.setDescription(String.format(
@@ -299,7 +299,7 @@ public class IrcChannelBridge extends IrcMessageBridge {
 		if (recipient == null)
 			return;
 
-		getDiscordChannel().sendMessage(
+		getDiscordEventChannel().sendMessage(
 				new EmbedBuilder()
 						.setColor(session.getConfiguration().appearance.channelEvents.getModeColor())
 						.setDescription(String.format(

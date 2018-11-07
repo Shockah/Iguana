@@ -82,6 +82,7 @@ public final class Configuration {
 					jServer.onLong("discordManagementChannelId", server::setDiscordManagementChannelId);
 					jServer.onString("nickServLogin", server::setNickServLogin);
 					jServer.onString("nickServPassword", server::setNickServPassword);
+					jServer.onDouble("channelJoinDelay", value -> server.setChannelJoinDelay((long)(value * 1000L)));
 					jServer.onList("channels", jChannels -> {
 						for (JSONObject jChannel : jChannels.ofObjects()) {
 							IRC.Server.Channel channel = new IRC.Server.Channel();
@@ -147,6 +148,7 @@ public final class Configuration {
 												"discordManagementChannelId", ircServerConfig.discordManagementChannelId,
 												"nickServLogin", ircServerConfig.nickServLogin,
 												"nickServPassword", ircServerConfig.nickServPassword,
+												"channelJoinDelay", ircServerConfig.channelJoinDelay / 1000.0,
 												"channels", new JSONList<JSONObject>(
 														ircServerConfig.channels.stream()
 																.map(ircChannelConfig -> JSONObject.of(
@@ -245,6 +247,8 @@ public final class Configuration {
 			private String nickServLogin;
 
 			private String nickServPassword;
+
+			private long channelJoinDelay;
 
 			@Nonnull
 			private final List<Channel> channels = new ArrayList<>();

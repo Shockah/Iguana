@@ -186,26 +186,40 @@ public class IrcServerBridge {
 	}
 
 	private class IrcListener extends IrcListenerAdapter {
-		@Override
-		public void onConnect(ConnectEvent event) throws Exception {
-			super.onConnect(event);
-
-			// waiting for NickServ to identify
-			// TODO: actually listen for a NickServ notice
-			Thread.sleep(2500);
-
+		private void joinChannels() {
 			for (Configuration.IRC.Server.Channel ircChannel : ircServerConfig.getChannels()) {
 				if (ircChannel.getPassword() == null)
 					getIrcBot().sendIRC().joinChannel(ircChannel.getName());
 				else
 					getIrcBot().sendIRC().joinChannel(ircChannel.getName(), ircChannel.getPassword());
 			}
+		}
+
+		@Override
+		public void onConnect(ConnectEvent event) throws Exception {
+			super.onConnect(event);
 
 			getDiscordManagementChannel().sendMessage(new EmbedBuilder()
 					.setColor(session.getConfiguration().appearance.serverEvents.getConnectedColor())
 					.setDescription(String.format("Connected to `%s`.", ircServerConfig.getHost()))
 					.setTimestamp(Instant.now())
 					.build()).queue();
+
+			if (ircServerConfig.getChannelJoinDelay() > 0) {
+				// waiting for NickServ to identify
+				// TODO: actually listen for a NickServ notice
+				Thread delayJoinThread = new Thread(() -> {
+					try {
+						Thread.sleep(ircServerConfig.getChannelJoinDelay());
+						joinChannels();
+					} catch (InterruptedException ignored) {
+					}
+				});
+				delayJoinThread.setDaemon(true);
+				delayJoinThread.start();
+			} else {
+				joinChannels();
+			}
 		}
 
 		@Override
