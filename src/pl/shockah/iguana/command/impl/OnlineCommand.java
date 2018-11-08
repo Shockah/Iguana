@@ -17,11 +17,19 @@ import lombok.Getter;
 import pl.shockah.iguana.bridge.IrcChannelBridge;
 import pl.shockah.iguana.command.ChannelCommand;
 import pl.shockah.iguana.command.NamedCommand;
+import pl.shockah.iguana.format.FormattingOutputer;
 
 public class OnlineCommand implements ChannelCommand, NamedCommand {
 	@Nonnull
 	@Getter
 	private final String name = "online";
+
+	@Nonnull
+	private final FormattingOutputer<?, ?> outputer;
+
+	public OnlineCommand(@Nonnull FormattingOutputer<?, ?> outputer) {
+		this.outputer = outputer;
+	}
 
 	@Override
 	public void execute(@Nonnull IrcChannelBridge channel, @Nonnull Message executingMessage, @Nonnull String input) {
@@ -72,7 +80,7 @@ public class OnlineCommand implements ChannelCommand, NamedCommand {
 		List<String> result = new ArrayList<>();
 		StringBuilder sb = new StringBuilder();
 		for (User user : users) {
-			String nick = user.getNick();
+			String nick = outputer.escapeFormatting(user.getNick());
 			if (sb.length() + nick.length() + separator.length() > 1024) {
 				result.add(sb.toString());
 				sb = new StringBuilder();

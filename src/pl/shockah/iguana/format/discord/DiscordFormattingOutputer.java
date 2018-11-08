@@ -178,8 +178,9 @@ public class DiscordFormattingOutputer implements FormattingOutputer<Void, Eithe
 	}
 
 	@Nonnull
-	private String escapeFormatting(@Nonnull String text) {
-		return text.replaceAll("([*_~`\\\\])", "\\\\$1");
+	@Override
+	public String escapeFormatting(@Nonnull String input) {
+		return input.replaceAll("([*_~`\\\\])", "\\\\$1");
 	}
 
 	@Nonnull

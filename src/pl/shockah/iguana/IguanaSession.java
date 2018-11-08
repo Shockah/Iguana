@@ -91,7 +91,7 @@ public class IguanaSession {
 
 	private void registerCommands() {
 		// channel-specific commands
-		bridge.getCommandManager().register(new OnlineCommand());
+		bridge.getCommandManager().register(new OnlineCommand(discordFormatter));
 
 		// server-specific commands
 		bridge.getCommandManager().register(new JoinCommand());
