@@ -6,6 +6,8 @@ import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.entities.Webhook;
 import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.core.events.user.update.UserUpdateGameEvent;
+import net.dv8tion.jda.core.events.user.update.UserUpdateOnlineStatusEvent;
 import net.dv8tion.jda.core.hooks.ListenerAdapter;
 
 import org.pircbotx.UserHostmask;
@@ -248,6 +250,28 @@ public class IrcBridge extends ListenerAdapter {
 					handled.value = true;
 				}
 			});
+		});
+	}
+
+	@Override
+	public void onUserUpdateOnlineStatus(UserUpdateOnlineStatusEvent event) {
+		User ownerUser = session.getConfiguration().discord.getOwnerUser(session.getDiscord());
+		if (!ownerUser.equals(event.getMember().getUser()))
+			return;
+
+		servers.iterate((ircServerConfig, serverBridge, iterator) -> {
+			serverBridge.updateUserStatus(event.getMember());
+		});
+	}
+
+	@Override
+	public void onUserUpdateGame(UserUpdateGameEvent event) {
+		User ownerUser = session.getConfiguration().discord.getOwnerUser(session.getDiscord());
+		if (!ownerUser.equals(event.getMember().getUser()))
+			return;
+
+		servers.iterate((ircServerConfig, serverBridge, iterator) -> {
+			serverBridge.updateUserStatus(event.getMember());
 		});
 	}
 }

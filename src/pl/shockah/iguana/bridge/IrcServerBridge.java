@@ -1,7 +1,10 @@
 package pl.shockah.iguana.bridge;
 
 import net.dv8tion.jda.core.EmbedBuilder;
+import net.dv8tion.jda.core.OnlineStatus;
 import net.dv8tion.jda.core.entities.Category;
+import net.dv8tion.jda.core.entities.Game;
+import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.TextChannel;
 
 import org.pircbotx.Channel;
@@ -185,8 +188,49 @@ public class IrcServerBridge {
 		});
 	}
 
+	private void updateIrcAwayStatus(@Nullable String awayStatus) {
+		if (awayStatus == null)
+			getIrcBot().sendRaw().rawLine("AWAY");
+		else
+			getIrcBot().sendRaw().rawLine(String.format("AWAY :%s", awayStatus));
+	}
+
+	@Nullable
+	private String getIrcAwayStatus(@Nonnull OnlineStatus status, @Nullable Game game) {
+		if (game == null) {
+			switch (status) {
+				case OFFLINE:
+					return "Offline";
+				case IDLE:
+					return "";
+				case DO_NOT_DISTURB:
+					return "Do not disturb";
+				default:
+					return null;
+			}
+		} else {
+			switch (game.getType()) {
+				case WATCHING:
+					return String.format("Watching %s", game.getName());
+				case LISTENING:
+					return String.format("Listening to %s", game.getName());
+				case STREAMING:
+					return String.format("Streaming %s (%s)", game.getName(), game.getUrl());
+				default:
+					return String.format("Playing %s", game.getName());
+			}
+		}
+	}
+
+	public void updateUserStatus(@Nonnull Member member) {
+		updateIrcAwayStatus(getIrcAwayStatus(member.getOnlineStatus(), member.getGame()));
+	}
+
 	private class IrcListener extends IrcListenerAdapter {
 		private void joinChannels() {
+			Configuration.Discord discordConfig = session.getConfiguration().discord;
+			updateUserStatus(discordConfig.getGuild(session.getDiscord()).getMember(discordConfig.getOwnerUser(session.getDiscord())));
+
 			for (Configuration.IRC.Server.Channel ircChannel : ircServerConfig.getChannels()) {
 				if (ircChannel.getPassword() == null)
 					getIrcBot().sendIRC().joinChannel(ircChannel.getName());
